@@ -12,6 +12,9 @@ templates-export/
 # Steam custom editor (180MB binary, not for git)
 editor_steam/
 
+# Steam DLLs tracked separately (or via LFS)
+steam_api64.dll
+
 # Android export
 /android/
 

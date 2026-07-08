@@ -71,8 +71,6 @@ func _on_player_connected(id: int):
 
 func _on_player_disconnected(id: int):
 	player_disconnected.emit(id)
-	if is_server:
-		rpc_id(id, "_on_server_disconnected")
 
 func _on_connected_to_server():
 	client_connected.emit()

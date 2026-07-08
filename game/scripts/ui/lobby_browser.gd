@@ -23,6 +23,7 @@ func _ready():
 	lobby_list.empty_clicked.connect(_on_lobby_deselected)
 	steam_manager.lobby_list_received.connect(_on_lobby_list)
 	steam_manager.lobby_joined.connect(_on_lobby_joined)
+	steam_manager.lobby_join_failed.connect(_on_join_failed)
 	_on_refresh_pressed()
 
 func _on_lobby_selected(_index: int):
@@ -30,6 +31,11 @@ func _on_lobby_selected(_index: int):
 
 func _on_lobby_deselected():
 	join_btn.disabled = true
+
+func _on_join_failed(reason: String):
+	logger.warn("LobbyBrowser", "Falha ao entrar: %s" % reason)
+	status_label.text = "Falha: %s" % reason
+	join_btn.disabled = false
 
 func _on_criar_pressed():
 	logger.info("LobbyBrowser", "Criar lobby")

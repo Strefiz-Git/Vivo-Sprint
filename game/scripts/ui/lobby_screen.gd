@@ -22,7 +22,8 @@ var _i_am_ready: bool = false
 
 func _ready():
 	logger.info("LobbyScreen", "Ecrã de lobby aberto")
-	title_label.text = "Lobby: %s" % steam_manager.lobby_id
+	var lobby_nome = steam_manager.get_lobby_data("lobby_name")
+	title_label.text = "Lobby: %s" % (lobby_nome if lobby_nome else steam_manager.lobby_id)
 	transfer_btn.visible = false
 	kick_btn.visible = false
 	config_btn.visible = steam_manager.is_host
@@ -133,7 +134,7 @@ func _on_config_save():
 	steam_manager.set_lobby_data("lobby_visibility", str(cfg_vis.get_selected_id()))
 	status_label.text = "Configuracao guardada"
 	config_window.hide()
-	title_label.text = "Lobby: %s" % steam_manager.lobby_id
+	title_label.text = "Lobby: %s" % cfg_name.text
 
 func _on_config_cancel():
 	config_window.hide()

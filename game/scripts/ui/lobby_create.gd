@@ -24,8 +24,12 @@ func _ready():
 	visibility_option.select(0)
 	steam_manager.lobby_created.connect(_on_lobby_created)
 	steam_manager.lobby_joined.connect(_on_lobby_joined)
+	steam_manager.lobby_join_failed.connect(_on_join_failed)
 
 func _on_create_pressed():
+	if not steam_manager.initialized:
+		status_label.text = "Steam offline"
+		return
 	var name_val = name_input.text.strip_edges()
 	if name_val.is_empty():
 		name_val = "%s's Lobby" % steam_manager.steam_name
@@ -48,6 +52,11 @@ func _on_lobby_created(lobby_id: int):
 	steam_manager.pending_lobby_name = ""
 	steam_manager.pending_lobby_password = ""
 	status_label.text = "Lobby criada! ID: %s" % lobby_id
+	create_btn.disabled = false
+
+func _on_join_failed(reason: String):
+	logger.warn("LobbyCreate", "Falha ao entrar: %s" % reason)
+	status_label.text = "Falha: %s" % reason
 	create_btn.disabled = false
 
 func _on_lobby_joined(_lobby_id: int):
