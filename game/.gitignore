@@ -1,0 +1,19 @@
+# Godot
+.godot/
+*.translation
+export/
+.mono/
+
+# Steam custom editor (180MB binary, not for git)
+editor_steam/
+
+# Android export
+/android/
+
+# Steam App ID (real IDs should not be committed)
+steam_appid.txt
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
