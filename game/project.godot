@@ -11,8 +11,21 @@ config_version=5
 [application]
 
 config/name="Vivo Sprint"
+run/main_scene="uid://bkyy1qg8cjwkq"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+logger="*res://scripts/logger.gd"
+globals="*res://scripts/globals.gd"
+event_bus="*res://scripts/event_bus.gd"
+helpers="*res://scripts/helpers.gd"
+settings="*res://scripts/settings.gd"
+scene_manager="*res://scripts/ui/scene_manager.gd"
+steam_manager="*res://scripts/steam/steam_manager.gd"
+network_manager="*res://scripts/network/network_manager.gd"
+resource_cache="*res://scripts/resource_cache.gd"
 
 [display]
 

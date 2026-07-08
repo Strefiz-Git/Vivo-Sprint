@@ -1,0 +1,95 @@
+extends Node
+
+const SETTINGS_FILE := "user://settings.cfg"
+
+var master_volume: float = 1.0:
+	set(v): master_volume = clampf(v, 0.0, 1.0)
+var sfx_volume: float = 1.0:
+	set(v): sfx_volume = clampf(v, 0.0, 1.0)
+var music_volume: float = 0.7:
+	set(v): music_volume = clampf(v, 0.0, 1.0)
+var resolution: Vector2i = Vector2i(1920, 1080)
+var fullscreen: bool = false
+var vsync: bool = true
+var max_fps: int = 144
+var quality_preset: int = 2
+
+var input_bindings: Dictionary = {}
+
+func _ready():
+	load_settings()
+
+func save_settings():
+	var cfg = ConfigFile.new()
+	cfg.set_value("audio", "master_volume", master_volume)
+	cfg.set_value("audio", "sfx_volume", sfx_volume)
+	cfg.set_value("audio", "music_volume", music_volume)
+	cfg.set_value("video", "resolution_x", resolution.x)
+	cfg.set_value("video", "resolution_y", resolution.y)
+	cfg.set_value("video", "fullscreen", fullscreen)
+	cfg.set_value("video", "vsync", vsync)
+	cfg.set_value("video", "max_fps", max_fps)
+	cfg.set_value("video", "quality_preset", quality_preset)
+	cfg.save(SETTINGS_FILE)
+	apply_all()
+
+func load_settings():
+	var cfg = ConfigFile.new()
+	if cfg.load(SETTINGS_FILE) != OK:
+		apply_all()
+		return
+	master_volume = cfg.get_value("audio", "master_volume", 1.0)
+	sfx_volume = cfg.get_value("audio", "sfx_volume", 1.0)
+	music_volume = cfg.get_value("audio", "music_volume", 0.7)
+	resolution = Vector2i(
+		cfg.get_value("video", "resolution_x", 1920),
+		cfg.get_value("video", "resolution_y", 1080)
+	)
+	fullscreen = cfg.get_value("video", "fullscreen", false)
+	vsync = cfg.get_value("video", "vsync", true)
+	max_fps = cfg.get_value("video", "max_fps", 144)
+	quality_preset = cfg.get_value("video", "quality_preset", 2)
+	apply_all()
+
+func apply_all():
+	apply_audio()
+	apply_video()
+
+func apply_audio():
+	var bus_idx_master := AudioServer.get_bus_index("Master")
+	var bus_idx_sfx := AudioServer.get_bus_index("SFX")
+	var bus_idx_music := AudioServer.get_bus_index("Music")
+	if bus_idx_master >= 0:
+		AudioServer.set_bus_volume_db(bus_idx_master, linear_to_db(master_volume))
+	if bus_idx_sfx >= 0:
+		AudioServer.set_bus_volume_db(bus_idx_sfx, linear_to_db(sfx_volume))
+	if bus_idx_music >= 0:
+		AudioServer.set_bus_volume_db(bus_idx_music, linear_to_db(music_volume))
+
+func apply_video():
+	var mode := DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
+	DisplayServer.window_set_size(resolution)
+	DisplayServer.window_set_mode(mode)
+	Engine.max_fps = max_fps if max_fps > 0 else 0
+
+func rebind_action(action: String, event: InputEvent):
+	InputMap.action_erase_events(action)
+	InputMap.action_add_event(action, event)
+	input_bindings[action] = event
+
+func get_binding(action: String) -> InputEvent:
+	if input_bindings.has(action):
+		return input_bindings[action]
+	var events = InputMap.action_get_events(action)
+	return events[0] if events.size() > 0 else null
+
+func reset_to_defaults():
+	master_volume = 1.0
+	sfx_volume = 1.0
+	music_volume = 0.7
+	resolution = Vector2i(1920, 1080)
+	fullscreen = false
+	vsync = true
+	max_fps = 144
+	quality_preset = 2
+	apply_all()

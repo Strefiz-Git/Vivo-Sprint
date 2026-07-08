@@ -1,8 +1,13 @@
 # Godot
 .godot/
 *.translation
-export/
 .mono/
+
+# Builds exportados
+exports/
+templates-export/
+*.pck
+*.console.exe
 
 # Steam custom editor (180MB binary, not for git)
 editor_steam/
