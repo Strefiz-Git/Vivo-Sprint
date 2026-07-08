@@ -8,6 +8,8 @@ var is_host: bool = false
 
 var _debug_time: float = 0.0
 var _pending_callbacks: Array[String] = []
+var pending_lobby_name: String = ""
+var pending_lobby_password: String = ""
 
 signal steam_ready(steam_id: int, name: String)
 signal steam_init_failed(reason: String)
@@ -37,22 +39,29 @@ func _connect_steam_signals():
 	var signal_list = Steam.get_signal_list()
 	for s in signal_list:
 		logger.debug("SteamManager", "  Sinal Steam: %s" % s.name)
-	var lobby_signals = ["lobby_created", "lobby_joined", "lobby_match_list", "lobby_chat_update", "lobby_data_update", "lobby_invite"]
+	var lobby_signals = ["lobby_created", "lobby_joined", "lobby_match_list", "lobby_chat_update", "lobby_data_update", "lobby_invite", "lobby_message"]
 	for sig_name in lobby_signals:
 		if Steam.has_signal(sig_name):
 			Steam.connect(sig_name, Callable(self, "_on_" + sig_name))
 			logger.info("SteamManager", "-> %s ligado" % sig_name)
-	# join_lobby_requested / lobby_join_requested
-	for alt_name in ["join_lobby_requested", "lobby_join_requested", "join_requested"]:
+	# join_requested (guia) — parâmetros: lobby_id, friend_id
+	for alt_name in ["join_requested", "join_lobby_requested", "lobby_join_requested"]:
 		if Steam.has_signal(alt_name):
-			Steam.connect(alt_name, Callable(self, "_on_lobby_join_requested"))
+			Steam.connect(alt_name, Callable(self, "_on_join_requested"))
 			logger.info("SteamManager", "-> %s ligado" % alt_name)
 	logger.info("SteamManager", "Sinais ligados.")
+
+func _on_join_requested(lobby_id_val: int, _friend_id: int):
+	logger.info("SteamManager", "Join requested: lobby=%s friend=%s" % [lobby_id_val, _friend_id])
+	join_lobby(lobby_id_val)
 
 func _debug_status():
 	logger.info("SteamManager", "=== DEBUG: lobby_id=%s is_host=%s initialized=%s pendentes=%s ===" % [lobby_id, is_host, initialized, _pending_callbacks])
 
 func _process(delta):
+	# CRÍTICO: processar callbacks Steam a cada frame (secção 4 do guia)
+	if initialized:
+		Steam.run_callbacks()
 	_debug_time += delta
 	if _debug_time >= 10.0:
 		_debug_time = 0.0
@@ -87,8 +96,8 @@ func create_lobby(visibility: int = Steam.LOBBY_TYPE_PUBLIC, max_players: int = 
 		logger.warn("SteamManager", "Tentou criar lobby mas Steam offline")
 		return
 	logger.info("SteamManager", "A criar lobby... visibilidade=%s max=%s" % [visibility, max_players])
-	var ret = Steam.createLobby(visibility, max_players)
-	logger.info("SteamManager", "createLobby retornou: %s" % ret)
+	Steam.createLobby(visibility, max_players)
+	logger.info("SteamManager", "createLobby chamado (void, sem retorno)")
 	_pending_callbacks.append("lobby_created")
 
 func join_lobby(target_lobby_id: int):
@@ -104,17 +113,22 @@ func leave_lobby():
 	Steam.leaveLobby(lobby_id)
 	lobby_id = 0
 	is_host = false
+	pending_lobby_name = ""
+	pending_lobby_password = ""
 	lobby_left.emit()
 
 func request_lobby_list():
+	request_lobby_list_filtered(Steam.LOBBY_DISTANCE_FILTER_DEFAULT, false)
+
+func request_lobby_list_filtered(distance_filter: int, no_password: bool):
 	if not initialized:
 		logger.warn("SteamManager", "Tentou procurar lobbies mas Steam offline")
 		return
-	logger.info("SteamManager", "A procurar lobbies...")
-	Steam.addRequestLobbyListDistanceFilter(Steam.LOBBY_DISTANCE_FILTER_DEFAULT)
+	logger.info("SteamManager", "A procurar lobbies... distancia=%s no_password=%s" % [distance_filter, no_password])
+	Steam.addRequestLobbyListDistanceFilter(distance_filter)
 	Steam.addRequestLobbyListResultCountFilter(50)
-	var ret = Steam.requestLobbyList()
-	logger.info("SteamManager", "requestLobbyList retornou: %s" % ret)
+	Steam.requestLobbyList()
+	logger.info("SteamManager", "requestLobbyList chamado (void, sem retorno)")
 	_pending_callbacks.append("lobby_match_list")
 
 func set_lobby_data(key: String, value: String):
@@ -122,6 +136,18 @@ func set_lobby_data(key: String, value: String):
 		return
 	logger.debug("SteamManager", "Lobby data: %s = %s" % [key, value])
 	Steam.setLobbyData(lobby_id, key, value)
+
+func set_lobby_name(name: String):
+	set_lobby_data("lobby_name", name)
+
+func set_lobby_password(password: String):
+	set_lobby_data("lobby_password", password)
+
+func set_lobby_joinable(joinable: bool):
+	if lobby_id == 0:
+		return
+	logger.debug("SteamManager", "Lobby joinable: %s" % joinable)
+	Steam.setLobbyJoinable(lobby_id, joinable)
 
 func get_lobby_data(key: String) -> String:
 	if lobby_id == 0:
@@ -138,24 +164,57 @@ func get_lobby_member_by_index(index: int) -> int:
 		return 0
 	return Steam.getLobbyMemberByIndex(lobby_id, index)
 
-func _on_lobby_created(connectivity: int, new_lobby_id: int):
+func get_lobby_owner() -> int:
+	if lobby_id == 0:
+		return 0
+	return Steam.getLobbyOwner(lobby_id)
+
+func transfer_ownership(target_steam_id: int):
+	if lobby_id == 0 or not is_host:
+		logger.warn("SteamManager", "So o host pode transferir ownership")
+		return
+	logger.info("SteamManager", "A transferir ownership para %s" % target_steam_id)
+	Steam.setLobbyOwner(lobby_id, target_steam_id)
+	is_host = false
+
+func kick_user(target_steam_id: int):
+	if lobby_id == 0 or not is_host:
+		logger.warn("SteamManager", "So o host pode expulsar")
+		return
+	logger.info("SteamManager", "A expulsar %s do lobby %s" % [target_steam_id, lobby_id])
+	Steam.kickUserFromLobby(lobby_id, target_steam_id)
+
+func _on_lobby_created(connect_status: int, lobby_id_val: int):
 	_pending_callbacks.erase("lobby_created")
-	logger.info("SteamManager", "Callback lobby_created: connectivity=%s lobby_id=%s" % [connectivity, new_lobby_id])
-	if connectivity == 1:
-		lobby_id = new_lobby_id
+	logger.info("SteamManager", "Callback lobby_created: status=%s lobby_id=%s (RESULT_OK=%s)" % [connect_status, lobby_id_val, Steam.Result.RESULT_OK])
+	if connect_status == Steam.Result.RESULT_OK:
+		lobby_id = lobby_id_val
 		is_host = true
 		set_lobby_data("game", "Vivo Sprint")
 		set_lobby_data("version", "0.1.0")
+		set_lobby_data("lobby_name", "Lobby de %s" % steam_name)
 		lobby_created.emit(lobby_id)
 	else:
-		logger.warn("SteamManager", "Falha ao criar lobby. Código: %s" % connectivity)
-		lobby_join_failed.emit("Failed to create lobby (code %s)" % connectivity)
+		logger.warn("SteamManager", "Falha ao criar lobby. Código: %s" % connect_status)
+		lobby_join_failed.emit("Failed to create lobby (code %s)" % connect_status)
 
-func _on_lobby_joined(new_lobby_id: int, _permissions: int, _locked: bool, _response: int):
+func _on_lobby_joined(lobby_id_val: int, _permissions: int, _locked: bool, response: int):
 	_pending_callbacks.erase("lobby_joined")
-	logger.info("SteamManager", "Callback lobby_joined: lobby_id=%s permissions=%s locked=%s response=%s" % [new_lobby_id, _permissions, _locked, _response])
-	lobby_id = new_lobby_id
-	lobby_joined.emit(lobby_id)
+	logger.info("SteamManager", "Callback lobby_joined: lobby_id=%s response=%s (SUCCESS=%s)" % [lobby_id_val, response, Steam.ChatRoomEnterResponse.CHAT_ROOM_ENTER_RESPONSE_SUCCESS])
+	if response == Steam.ChatRoomEnterResponse.CHAT_ROOM_ENTER_RESPONSE_SUCCESS:
+		lobby_id = lobby_id_val
+		lobby_joined.emit(lobby_id)
+	else:
+		var reason = "unknown"
+		match response:
+			Steam.ChatRoomEnterResponse.CHAT_ROOM_ENTER_RESPONSE_DOESNT_EXIST:
+				reason = "lobby does not exist"
+			Steam.ChatRoomEnterResponse.CHAT_ROOM_ENTER_RESPONSE_FULL:
+				reason = "lobby is full"
+			Steam.ChatRoomEnterResponse.CHAT_ROOM_ENTER_RESPONSE_BANNED:
+				reason = "banned"
+		logger.warn("SteamManager", "Falha ao entrar lobby: %s" % reason)
+		lobby_join_failed.emit(reason)
 
 func _on_lobby_join_requested(_lobby_id: int):
 	logger.info("SteamManager", "Pedido de entrada no lobby %s" % _lobby_id)
@@ -177,15 +236,17 @@ func _on_lobby_match_list(lobby_list: Array):
 	logger.info("SteamManager", "Callback lobby_match_list: %s lobbies encontrados" % lobby_list.size())
 	var lobbies: Array[Dictionary] = []
 	for id in lobby_list:
-		var name := Steam.getLobbyData(id, "name")
+		var name := Steam.getLobbyData(id, "lobby_name")
 		var player_count := Steam.getNumLobbyMembers(id)
 		var max_players := Steam.getLobbyMemberLimit(id)
-		logger.debug("SteamManager", "  Lobby %s: %s (%s/%s)" % [id, name, player_count, max_players])
+		var password := Steam.getLobbyData(id, "lobby_password")
+		logger.debug("SteamManager", "  Lobby %s: %s (%s/%s) password=%s" % [id, name, player_count, max_players, password])
 		lobbies.append({
 			"id": id,
-			"name": name if name else "Unnamed Lobby",
+			"name": name if name else "Lobby de %s" % Steam.getLobbyOwner(id),
 			"players": player_count,
-			"max_players": max_players
+			"max_players": max_players,
+			"password": password
 		})
 	lobby_list_received.emit(lobbies)
 
@@ -193,10 +254,15 @@ func _on_lobby_invite(_inviter: int, _lobby_id: int, _game_id: int):
 	logger.info("SteamManager", "Convite para lobby %s de %s" % [_lobby_id, _inviter])
 	join_lobby(_lobby_id)
 
+func _on_lobby_message(lobby_id_val: int, sender: int, message: String, chat_type: int):
+	logger.info("SteamManager", "Mensagem lobby %s de %s: %s" % [lobby_id_val, sender, message])
+
 func _on_lobby_kicked(lobby_id_kicked: int, admin_id: int, kicked_due_to_disconnect: bool):
 	logger.info("SteamManager", "Foste expulso do lobby %s pelo admin %s (disconnect=%s)" % [lobby_id_kicked, admin_id, kicked_due_to_disconnect])
 	lobby_id = 0
 	is_host = false
+	pending_lobby_name = ""
+	pending_lobby_password = ""
 	lobby_left.emit()
 
 func _on_lobby_game_created(_lobby_id: int, _ip: int, _port: int):

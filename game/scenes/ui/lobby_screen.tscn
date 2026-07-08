@@ -1,0 +1,130 @@
+[gd_scene format=3 uid="uid://dxhksoh88ywii"]
+
+[ext_resource type="Script" path="res://scripts/ui/lobby_screen.gd" id="1"]
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="title_label" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "Lobby: ---"
+
+[node name="player_list" type="ItemList" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="status_label" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = ""
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ready_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Pronto"
+
+[node name="start_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Iniciar Corrida"
+visible = false
+
+[node name="transfer_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Passar Liderança"
+visible = false
+
+[node name="kick_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Expulsar"
+visible = false
+
+[node name="config_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Configurar"
+visible = false
+
+[node name="leave_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Sair Lobby"
+
+[node name="config_window" type="Window" parent="."]
+title = "Configurar Lobby"
+visible = false
+size = Vector2i(400, 320)
+
+[node name="VBox" type="VBoxContainer" parent="config_window"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="lbl_name" type="Label" parent="config_window/VBox"]
+layout_mode = 2
+text = "Nome do Lobby:"
+
+[node name="cfg_name" type="LineEdit" parent="config_window/VBox"]
+layout_mode = 2
+
+[node name="lbl_max" type="Label" parent="config_window/VBox"]
+layout_mode = 2
+text = "Max. Jogadores:"
+
+[node name="cfg_max" type="HSlider" parent="config_window/VBox"]
+layout_mode = 2
+min_value = 2.0
+max_value = 32.0
+step = 1.0
+value = 8.0
+
+[node name="cfg_max_label" type="Label" parent="config_window/VBox"]
+layout_mode = 2
+text = "8"
+
+[node name="lbl_pass" type="Label" parent="config_window/VBox"]
+layout_mode = 2
+text = "Password:"
+
+[node name="cfg_pass" type="LineEdit" parent="config_window/VBox"]
+layout_mode = 2
+secret = true
+
+[node name="lbl_vis" type="Label" parent="config_window/VBox"]
+layout_mode = 2
+text = "Visibilidade:"
+
+[node name="cfg_vis" type="OptionButton" parent="config_window/VBox"]
+layout_mode = 2
+
+[node name="HB" type="HBoxContainer" parent="config_window/VBox"]
+layout_mode = 2
+
+[node name="cfg_save" type="Button" parent="config_window/VBox/HB"]
+layout_mode = 2
+text = "Guardar"
+
+[node name="cfg_cancel" type="Button" parent="config_window/VBox/HB"]
+layout_mode = 2
+text = "Cancelar"
+
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/ready_btn" to="." method="_on_ready_pressed"]
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/start_btn" to="." method="_on_start_pressed"]
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/transfer_btn" to="." method="_on_transfer_pressed"]
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/kick_btn" to="." method="_on_kick_pressed"]
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/config_btn" to="." method="_on_config_pressed"]
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/leave_btn" to="." method="_on_leave_pressed"]
+[connection signal="pressed" from="config_window/VBox/HB/cfg_save" to="." method="_on_config_save"]
+[connection signal="pressed" from="config_window/VBox/HB/cfg_cancel" to="." method="_on_config_cancel"]
