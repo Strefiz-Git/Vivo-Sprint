@@ -19,7 +19,7 @@ signal lobby_join_failed(reason: String)
 signal lobby_left()
 signal member_joined(steam_id: int)
 signal member_left(steam_id: int)
-signal lobby_data_updated(key: String, value: String)
+signal lobby_data_updated(member_id: int)
 signal lobby_list_received(lobbies: Array)
 
 func _ready():
@@ -159,6 +159,11 @@ func get_lobby_member_count() -> int:
 		return 0
 	return Steam.getNumLobbyMembers(lobby_id)
 
+func get_lobby_member_limit() -> int:
+	if lobby_id == 0:
+		return 0
+	return Steam.getLobbyMemberLimit(lobby_id)
+
 func get_lobby_member_by_index(index: int) -> int:
 	if lobby_id == 0:
 		return 0
@@ -178,11 +183,7 @@ func transfer_ownership(target_steam_id: int):
 	is_host = false
 
 func kick_user(target_steam_id: int):
-	if lobby_id == 0 or not is_host:
-		logger.warn("SteamManager", "So o host pode expulsar")
-		return
-	logger.info("SteamManager", "A expulsar %s do lobby %s" % [target_steam_id, lobby_id])
-	Steam.kickUserFromLobby(lobby_id, target_steam_id)
+	logger.warn("SteamManager", "Expulsar nao suportado nesta versao do GodotSteam")
 
 func _on_lobby_created(connect_status: int, lobby_id_val: int):
 	_pending_callbacks.erase("lobby_created")
@@ -192,7 +193,7 @@ func _on_lobby_created(connect_status: int, lobby_id_val: int):
 		is_host = true
 		set_lobby_data("game", "Vivo Sprint")
 		set_lobby_data("version", "0.1.0")
-		set_lobby_data("lobby_name", "Lobby de %s" % steam_name)
+		set_lobby_data("lobby_name", "%s's Lobby" % steam_name)
 		lobby_created.emit(lobby_id)
 	else:
 		logger.warn("SteamManager", "Falha ao criar lobby. Código: %s" % connect_status)
@@ -220,9 +221,11 @@ func _on_lobby_join_requested(_lobby_id: int):
 	logger.info("SteamManager", "Pedido de entrada no lobby %s" % _lobby_id)
 	join_lobby(_lobby_id)
 
-func _on_lobby_data_update(_lobby_id: int, _key: String, _value: String):
-	logger.debug("SteamManager", "Lobby data updated: %s = %s" % [_key, _value])
-	lobby_data_updated.emit(_key, _value)
+func _on_lobby_data_update(_lobby_id: int, _member_id: int, _success: int):
+	if _success != 1:
+		return
+	logger.debug("SteamManager", "Lobby data update: lobby=%s member=%s" % [_lobby_id, _member_id])
+	lobby_data_updated.emit(_member_id)
 
 func _on_lobby_chat_update(_lobby_id: int, _changed_id: int, _making_change_id: int, _chat_state: int):
 	logger.info("SteamManager", "Lobby chat update: lobby=%s changed=%s state=%s" % [_lobby_id, _changed_id, _chat_state])

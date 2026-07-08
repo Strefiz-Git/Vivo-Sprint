@@ -20,7 +20,7 @@ func _ready():
 	filter_distance.add_item("Mundo", Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
 	filter_distance.select(1)
 	lobby_list.item_selected.connect(_on_lobby_selected)
-	lobby_list.nothing_selected.connect(_on_lobby_deselected)
+	lobby_list.empty_clicked.connect(_on_lobby_deselected)
 	steam_manager.lobby_list_received.connect(_on_lobby_list)
 	steam_manager.lobby_joined.connect(_on_lobby_joined)
 	_on_refresh_pressed()

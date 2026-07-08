@@ -11,6 +11,7 @@ extends Control
 
 func _ready():
 	logger.info("LobbyCreate", "Cena de criar lobby aberta")
+	name_input.text = "%s's Lobby" % steam_manager.steam_name
 	player_slider.value_changed.connect(func(v):
 		player_label.text = "Jogadores: %d" % v
 	)
@@ -27,7 +28,7 @@ func _ready():
 func _on_create_pressed():
 	var name_val = name_input.text.strip_edges()
 	if name_val.is_empty():
-		name_val = "Lobby de %s" % steam_manager.steam_name
+		name_val = "%s's Lobby" % steam_manager.steam_name
 	var max_p = int(player_slider.value)
 	var pass_val = password_input.text.strip_edges()
 	var vis = visibility_option.get_selected_id()

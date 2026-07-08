@@ -30,7 +30,7 @@ func _ready():
 	ready_btn.disabled = steam_manager.is_host
 	_atualizar_jogadores()
 	player_list.item_selected.connect(_on_player_selected)
-	player_list.nothing_selected.connect(_on_player_deselected)
+	player_list.empty_clicked.connect(_on_player_deselected)
 	cfg_max.value_changed.connect(func(v): cfg_max_label.text = str(v))
 	cfg_vis.add_item("Público", Steam.LOBBY_TYPE_PUBLIC)
 	cfg_vis.add_item("Amigos", Steam.LOBBY_TYPE_FRIENDS_ONLY)
@@ -47,6 +47,7 @@ func _atualizar_jogadores():
 	player_list.clear()
 	var count = steam_manager.get_lobby_member_count()
 	var owner_id = steam_manager.get_lobby_owner()
+	var max_count = steam_manager.get_lobby_member_limit()
 	for i in range(count):
 		var sid = steam_manager.get_lobby_member_by_index(i)
 		var nome = Steam.getFriendPersonaName(sid)
@@ -60,7 +61,7 @@ func _atualizar_jogadores():
 		var idx = player_list.item_count - 1
 		player_list.set_item_metadata(idx, sid)
 	logger.info("LobbyScreen", "%d jogadores na lobby" % count)
-	status_label.text = "%d/%d jogadores" % [count, steam_manager.get_lobby_member_count()]
+	status_label.text = "%d/%d jogadores" % [count, max_count]
 
 func _on_player_selected(index: int):
 	if not steam_manager.is_host:
@@ -114,8 +115,8 @@ func _on_config_pressed():
 
 func _preencher_config():
 	var nome = steam_manager.get_lobby_data("lobby_name")
-	cfg_name.text = nome if nome else "Lobby de %s" % steam_manager.steam_name
-	cfg_max.value = steam_manager.get_lobby_member_count()
+	cfg_name.text = nome if nome else "%s's Lobby" % steam_manager.steam_name
+	cfg_max.value = steam_manager.get_lobby_member_limit()
 	cfg_max_label.text = str(cfg_max.value)
 	var pass_val = steam_manager.get_lobby_data("lobby_password")
 	cfg_pass.text = pass_val
@@ -144,9 +145,8 @@ func _on_leave_pressed():
 func _on_member_changed(_sid: int):
 	_atualizar_jogadores()
 
-func _on_lobby_data_updated(_key: String, _value: String):
-	if _key == "ready":
-		_atualizar_jogadores()
+func _on_lobby_data_updated(_member_id: int):
+	_atualizar_jogadores()
 
 func _on_lobby_left():
 	logger.info("LobbyScreen", "Saíu da lobby, voltar ao menu")
