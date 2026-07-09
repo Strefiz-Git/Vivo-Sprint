@@ -305,25 +305,32 @@ func _on_lobby_join_requested(_lobby_id: int):
 
 func _on_lobby_data_update(lobby_id: int, member_id: int, _success: int):
 	logger.debug("SteamManager", "lobby_data_update: lobby=%s member=%s success=%s" % [lobby_id, member_id, _success])
-	if lobby_id in _search_lobby_ids and not _search_lobby_data.has(lobby_id):
-		if member_id == 0:
-			_coletar_dados_lobby(lobby_id)
+	# Diferentes versões de GodotSteam podem ordenar os parâmetros de forma diferente.
+	# Se lobby_id for 0/1 e member_id for um número grande, é provável que estejam trocados.
+	var possible_lobby = lobby_id
+	var possible_member = _success
+	if lobby_id <= 1 and member_id > 1:
+		possible_lobby = member_id
+		possible_member = _success
+	if possible_lobby in _search_lobby_ids and not _search_lobby_data.has(possible_lobby):
+		if possible_member == 0:
+			_coletar_dados_lobby(possible_lobby)
 		else:
-			logger.warn("SteamManager", "member_id != 0 for lobby %s (member=%s), collecting anyway" % [lobby_id, member_id])
-			_coletar_dados_lobby(lobby_id)
+			logger.warn("SteamManager", "member_id != 0 for lobby %s (member=%s), collecting anyway" % [possible_lobby, possible_member])
+			_coletar_dados_lobby(possible_lobby)
 		return
-	if lobby_id == self.lobby_id:
-		# Host: verificar password de novos membros (apenas se pw_hash já foi definido)
-		if is_host and member_id != steam_id and member_id != 0:
-			var pw_attempt = Steam.getLobbyMemberData(lobby_id, member_id, "pw_hash")
+	if possible_lobby == self.lobby_id:
+		# Host: verificar password de novos membros
+		if is_host and possible_member != steam_id and possible_member != 0:
+			var pw_attempt = Steam.getLobbyMemberData(self.lobby_id, possible_member, "pw_hash")
 			if pw_attempt != "":
-				var stored_hash = Steam.getLobbyData(lobby_id, "lobby_password_hash")
+				var stored_hash = Steam.getLobbyData(self.lobby_id, "lobby_password_hash")
 				if stored_hash and stored_hash != "" and stored_hash != "0":
 					if pw_attempt != stored_hash:
-						logger.warn("SteamManager", "Wrong password from member %s, kicking" % member_id)
-						_kick_player(member_id)
-		logger.debug("SteamManager", "Lobby member data update: lobby=%s member=%s" % [lobby_id, member_id])
-		lobby_data_updated.emit(member_id)
+						logger.warn("SteamManager", "Wrong password from member %s, kicking" % possible_member)
+						_kick_player(possible_member)
+		logger.debug("SteamManager", "Lobby member data update: lobby=%s member=%s" % [possible_lobby, possible_member])
+		lobby_data_updated.emit(possible_member)
 
 func _coletar_dados_lobby(lobby_id: int):
 	if _search_emitted_list:

@@ -26,6 +26,7 @@ extends Control
 @onready var chat_display: RichTextLabel = $VBoxContainer/main_split/chat_box/chat_display
 @onready var chat_input: LineEdit = $VBoxContainer/main_split/chat_box/chat_bottom/chat_input
 @onready var chat_send_btn: Button = $VBoxContainer/main_split/chat_box/chat_bottom/chat_send
+@onready var debug_label: Label = $VBoxContainer/debug_label
 
 var _i_am_ready: bool = false
 var _selected_sid: int = 0
@@ -45,7 +46,9 @@ func _ready():
 	# Inicializar chat
 	chat_display.bbcode_enabled = true
 	chat_input.text_submitted.connect(_on_chat_send)
+	chat_send_btn.pressed.connect(_on_chat_send_btn)
 	steam_manager.lobby_chat_message.connect(_on_lobby_chat_message)
+	chat_display.append_text("[color=green]%s[/color]\n" % tr("CHAT_WELCOME"))
 	# Inicializar ping timer (host faz ping periódico)
 	_ping_timer = Timer.new()
 	_ping_timer.wait_time = 3.0
@@ -67,6 +70,13 @@ func _ready():
 		_ping_timer.start()
 
 func _setup_tree():
+	player_tree.clear()
+	_player_rows.clear()
+	var root = player_tree.create_item()
+	root.set_text(0, "")
+	root.set_text(1, "Players (%d)" % steam_manager.get_lobby_member_count() if steam_manager.lobby_id != 0 else "Players")
+	root.set_text(2, "")
+	root.set_text(3, "")
 	player_tree.set_column_title(0, tr("LOBBY_RDY"))
 	player_tree.set_column_title(1, tr("LOBBY_PLAYER_NAME"))
 	player_tree.set_column_title(2, tr("LOBBY_PING"))
@@ -78,6 +88,7 @@ func _setup_tree():
 	player_tree.set_column_expand(1, true)
 	player_tree.set_column_expand(2, false)
 	player_tree.set_column_expand(3, false)
+
 
 func _apply_texts():
 	ready_btn.text = tr("LOBBY_READY")
@@ -141,6 +152,13 @@ func _atualizar_jogadores():
 			_player_rows[sid].free()
 			_player_rows.erase(sid)
 	# Adicionar/atualizar linhas
+	var root = player_tree.get_root()
+	if not root:
+		root = player_tree.create_item()
+		root.set_text(0, "")
+		root.set_text(1, "Players")
+		root.set_text(2, "")
+		root.set_text(3, "")
 	for i in range(count):
 		var sid = steam_manager.get_lobby_member_by_index(i)
 		var nome = Steam.getFriendPersonaName(sid)
@@ -154,18 +172,23 @@ func _atualizar_jogadores():
 			if badges:
 				badges += " "
 			badges += tr("LOBBY_HOST")
+		var nome_colorido = nome
+		if sid == owner_id:
+			nome_colorido = "★ " + nome
+		if sid == steam_manager.steam_id:
+			nome_colorido = "[%s]" % nome
 		if _player_rows.has(sid):
 			var item = _player_rows[sid]
-			item.set_text(0, "✓" if is_ready else "—")
-			item.set_custom_color(0, Color.GREEN_YELLOW if is_ready else Color.GRAY)
-			item.set_text(1, nome)
+			item.set_checked(0, is_ready)
+			item.set_text(1, nome_colorido)
 			item.set_text(2, ping)
 			item.set_text(3, badges)
 		else:
-			var item = player_tree.create_item()
-			item.set_text(0, "✓" if is_ready else "—")
-			item.set_custom_color(0, Color.GREEN_YELLOW if is_ready else Color.GRAY)
-			item.set_text(1, nome)
+			var item = player_tree.create_item(root)
+			item.set_cell_mode(0, TreeItem.CELL_MODE_CHECK)
+			item.set_checked(0, is_ready)
+			item.set_editable(0, false)
+			item.set_text(1, nome_colorido)
 			item.set_text(2, ping)
 			item.set_text(3, badges)
 			item.set_metadata(0, sid)
@@ -178,13 +201,24 @@ func _atualizar_jogadores():
 			player_actions.visible = false
 	logger.info("LobbyScreen", "%d players in lobby" % count)
 	status_label.text = tr("LOBBY_PLAYERS") % [count, max_count]
+	# Forçar refresh visual da Tree
+	player_tree.queue_redraw()
+	# Mostrar dados crus no debug_label
+	var dbg = "lobby=%s count=%d owner=%s is_host=%s\n" % [steam_manager.lobby_id, count, owner_id, steam_manager.is_host]
+	for sid in active_sids:
+		var n = Steam.getFriendPersonaName(sid)
+		var r = Steam.getLobbyMemberData(steam_manager.lobby_id, sid, "ready")
+		dbg += "  %s (%s) ready=%s\n" % [n, sid, r]
+	debug_label.text = dbg
 
 func _on_player_selected():
 	var selected = player_tree.get_selected()
 	if not selected:
 		return
-	var sid = selected.get_metadata(0) as int
-	_selected_sid = sid
+	var sid = selected.get_metadata(0)
+	if not sid is int:
+		return
+	_selected_sid = sid as int
 	if not steam_manager.is_host or sid == steam_manager.steam_id:
 		player_actions.visible = false
 		return
@@ -299,6 +333,9 @@ func _volta_pong(from_sid: int):
 	_atualizar_jogadores()
 
 # --- Chat ---
+
+func _on_chat_send_btn():
+	_on_chat_send(chat_input.text)
 
 func _on_chat_send(text: String):
 	var msg = text.strip_edges()

@@ -95,3 +95,4 @@ CHAT_PLACEHOLDER,Type a message...,Escreve uma mensagem...
 CHAT_SEND,Send,Enviar
 CHAT_JOINED,entered the lobby,entrou no lobby
 CHAT_LEFT,left the lobby,saiu do lobby
+CHAT_WELCOME,Welcome to the lobby!,Bem-vindo ao lobby!
