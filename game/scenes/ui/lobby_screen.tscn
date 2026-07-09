@@ -36,13 +36,42 @@ layout_mode = 2
 text = "Configure"
 visible = false
 
-[node name="player_tree" type="Tree" parent="VBoxContainer"]
+[node name="main_split" type="HSplitContainer" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+split_offset = 420
+
+[node name="player_tree" type="Tree" parent="VBoxContainer/main_split"]
+layout_mode = 2
+size_flags_horizontal = 3
 columns = 4
 column_titles_visible = true
 hide_root = true
 select_mode = 1
+
+[node name="chat_box" type="VBoxContainer" parent="VBoxContainer/main_split"]
+layout_mode = 2
+size_flags_horizontal = 1
+
+[node name="chat_display" type="RichTextLabel" parent="VBoxContainer/main_split/chat_box"]
+layout_mode = 2
+size_flags_vertical = 3
+scroll_active = true
+bbcode_enabled = true
+fit_content_height = false
+text = ""
+
+[node name="chat_bottom" type="HBoxContainer" parent="VBoxContainer/main_split/chat_box"]
+layout_mode = 2
+
+[node name="chat_input" type="LineEdit" parent="VBoxContainer/main_split/chat_box/chat_bottom"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Type a message..."
+
+[node name="chat_send" type="Button" parent="VBoxContainer/main_split/chat_box/chat_bottom"]
+layout_mode = 2
+text = "Send"
 
 [node name="status_label" type="Label" parent="VBoxContainer"]
 layout_mode = 2
@@ -55,7 +84,6 @@ visible = false
 [node name="add_friend_btn" type="Button" parent="VBoxContainer/player_actions"]
 layout_mode = 2
 text = "Add Friend"
-disabled = false
 
 [node name="transfer_btn" type="Button" parent="VBoxContainer/player_actions"]
 layout_mode = 2
@@ -148,8 +176,8 @@ layout_mode = 2
 text = "Cancel"
 
 [connection signal="pressed" from="VBoxContainer/header/config_btn" to="." method="_on_config_pressed"]
-[connection signal="item_selected" from="VBoxContainer/player_tree" to="." method="_on_player_selected"]
-[connection signal="nothing_selected" from="VBoxContainer/player_tree" to="." method="_on_player_deselected"]
+[connection signal="item_selected" from="VBoxContainer/main_split/player_tree" to="." method="_on_player_selected"]
+[connection signal="nothing_selected" from="VBoxContainer/main_split/player_tree" to="." method="_on_player_deselected"]
 [connection signal="pressed" from="VBoxContainer/player_actions/add_friend_btn" to="." method="_on_add_friend_pressed"]
 [connection signal="pressed" from="VBoxContainer/player_actions/transfer_btn" to="." method="_on_transfer_pressed"]
 [connection signal="pressed" from="VBoxContainer/player_actions/kick_btn" to="." method="_on_kick_pressed"]

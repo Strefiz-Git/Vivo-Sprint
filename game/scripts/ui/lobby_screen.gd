@@ -2,7 +2,7 @@ extends Control
 
 @onready var title_label: Label = $VBoxContainer/header/title_label
 @onready var lbl_password_status: Label = $VBoxContainer/header/lbl_password_status
-@onready var player_tree: Tree = $VBoxContainer/player_tree
+@onready var player_tree: Tree = $VBoxContainer/main_split/player_tree
 @onready var status_label: Label = $VBoxContainer/status_label
 
 @onready var player_actions: HBoxContainer = $VBoxContainer/player_actions
@@ -23,10 +23,15 @@ extends Control
 @onready var cfg_pass: LineEdit = $config_window/VBox/cfg_pass
 @onready var cfg_vis: OptionButton = $config_window/VBox/cfg_vis
 
+@onready var chat_display: RichTextLabel = $VBoxContainer/main_split/chat_box/chat_display
+@onready var chat_input: LineEdit = $VBoxContainer/main_split/chat_box/chat_bottom/chat_input
+@onready var chat_send_btn: Button = $VBoxContainer/main_split/chat_box/chat_bottom/chat_send
+
 var _i_am_ready: bool = false
 var _selected_sid: int = 0
-var _player_rows: Dictionary = {}  # steam_id -> TreeItem
-var _pings: Dictionary = {}  # steam_id -> ping string
+var _player_rows: Dictionary = {}
+var _pings: Dictionary = {}
+var _ping_timer: Timer = null
 
 func _ready():
 	logger.info("LobbyScreen", "Lobby screen opened")
@@ -37,14 +42,29 @@ func _ready():
 	_atualizar_password_status()
 	config_btn.visible = false
 	start_btn.visible = false
+	# Inicializar chat
+	chat_display.bbcode_enabled = true
+	chat_input.text_submitted.connect(_on_chat_send)
+	steam_manager.lobby_chat_message.connect(_on_lobby_chat_message)
+	# Inicializar ping timer (host faz ping periódico)
+	_ping_timer = Timer.new()
+	_ping_timer.wait_time = 3.0
+	_ping_timer.timeout.connect(_enviar_ping)
+	add_child(_ping_timer)
+	# Preencher lista de jogadores (retry progressivo se os dados Steam ainda não estiverem prontos)
 	_atualizar_jogadores()
-	steam_manager.member_joined.connect(_on_member_changed)
-	steam_manager.member_left.connect(_on_member_changed)
+	if _player_rows.is_empty():
+		get_tree().create_timer(0.3).timeout.connect(_retry_jogadores)
+		get_tree().create_timer(1.0).timeout.connect(_retry_jogadores)
+		get_tree().create_timer(2.5).timeout.connect(_retry_jogadores)
+	steam_manager.member_joined.connect(_on_member_joined)
+	steam_manager.member_left.connect(_on_member_left)
 	steam_manager.lobby_data_updated.connect(_on_lobby_data_updated)
 	steam_manager.lobby_left.connect(_on_lobby_left)
 	steam_manager.kicked.connect(_on_kicked)
 	if steam_manager.is_host:
 		Steam.setLobbyJoinable(steam_manager.lobby_id, true)
+		_ping_timer.start()
 
 func _setup_tree():
 	player_tree.set_column_title(0, tr("LOBBY_RDY"))
@@ -77,6 +97,8 @@ func _apply_texts():
 	$config_window/VBox/HB/cfg_cancel.text = tr("CONFIG_CANCEL")
 	player_tree.set_column_title(1, tr("LOBBY_PLAYER_NAME"))
 	player_tree.set_column_title(2, tr("LOBBY_PING"))
+	chat_input.placeholder_text = tr("CHAT_PLACEHOLDER")
+	chat_send_btn.text = tr("CHAT_SEND")
 
 func _atualizar_password_status():
 	var hash_val = steam_manager.get_lobby_data("lobby_password_hash")
@@ -92,19 +114,20 @@ func _obter_ping(steam_id: int) -> String:
 		return "0ms"
 	if _pings.has(steam_id):
 		return _pings[steam_id]
-	if steam_manager.initialized:
-		var state = Steam.getP2PSessionState(steam_id)
-		if state and state.has("m_nPing"):
-			var ping = state["m_nPing"]
-			_pings[steam_id] = "%dms" % ping
-			return _pings[steam_id]
 	return "---"
+
+func _retry_jogadores():
+	_atualizar_jogadores()
+	if _player_rows.is_empty():
+		logger.warn("LobbyScreen", "Player list still empty after retry, lobby_id=%s" % steam_manager.lobby_id)
 
 func _atualizar_jogadores():
 	if steam_manager.lobby_id == 0:
+		logger.warn("LobbyScreen", "_atualizar_jogadores: lobby_id=0, skipping")
 		return
 	var count = steam_manager.get_lobby_member_count()
 	var owner_id = steam_manager.get_lobby_owner()
+	logger.info("LobbyScreen", "_atualizar_jogadores count=%d owner=%s rows=%d" % [count, owner_id, _player_rows.size()])
 	var max_count = steam_manager.get_lobby_member_limit()
 	var era_host = steam_manager.is_host
 	steam_manager.is_host = (owner_id == steam_manager.steam_id)
@@ -256,8 +279,49 @@ func _on_leave_pressed():
 	logger.info("LobbyScreen", "Leaving lobby")
 	steam_manager.leave_lobby()
 
-func _on_member_changed(_sid: int):
+# --- RPC Ping ---
+
+func _enviar_ping():
+	if not steam_manager.is_host or multiplayer.multiplayer_peer == null:
+		return
+	_envia_pingo.rpc()
+
+@rpc("any_peer", "call_remote", "unreliable")
+func _envia_pingo():
+	var sender_peer = multiplayer.get_remote_sender_id()
+	_volta_pong.rpc_id(sender_peer, steam_manager.steam_id)
+
+@rpc("any_peer", "call_remote", "unreliable")
+func _volta_pong(from_sid: int):
+	if not steam_manager.is_host:
+		return
+	_pings[from_sid] = "<50ms"
 	_atualizar_jogadores()
+
+# --- Chat ---
+
+func _on_chat_send(text: String):
+	var msg = text.strip_edges()
+	if msg.is_empty():
+		chat_input.text = ""
+		return
+	if steam_manager.initialized and steam_manager.lobby_id != 0:
+		Steam.sendLobbyChatMsg(steam_manager.lobby_id, msg)
+	chat_input.text = ""
+
+func _on_lobby_chat_message(sender: int, message: String):
+	var nome = Steam.getFriendPersonaName(sender)
+	chat_display.append_text("[b]%s:[/b] %s\n" % [nome, message])
+
+func _on_member_joined(sid: int):
+	_atualizar_jogadores()
+	var nome = Steam.getFriendPersonaName(sid)
+	chat_display.append_text("[color=gray]%s %s[/color]\n" % [nome, tr("CHAT_JOINED")])
+
+func _on_member_left(sid: int):
+	_atualizar_jogadores()
+	var nome = Steam.getFriendPersonaName(sid)
+	chat_display.append_text("[color=gray]%s %s[/color]\n" % [nome, tr("CHAT_LEFT")])
 
 func _on_lobby_data_updated(_member_id: int):
 	_atualizar_jogadores()
@@ -265,6 +329,10 @@ func _on_lobby_data_updated(_member_id: int):
 func _on_kicked(_lobby_id: int):
 	logger.warn("LobbyScreen", "Was kicked from lobby")
 	status_label.text = tr("LOBBY_KICKED")
+
+func _exit_tree():
+	if _ping_timer:
+		_ping_timer.stop()
 
 func _on_lobby_left():
 	logger.info("LobbyScreen", "Left lobby, back to menu")

@@ -91,3 +91,7 @@ LOBBY_INVITE,Invite Friends,Convidar Amigos
 LOBBY_PASSWORD_PROTECTED,Password protected,Protegido por password
 LOBBY_NO_PASSWORD,No password,Sem password
 LOBBY_RDY,Rdy,Prt
+CHAT_PLACEHOLDER,Type a message...,Escreve uma mensagem...
+CHAT_SEND,Send,Enviar
+CHAT_JOINED,entered the lobby,entrou no lobby
+CHAT_LEFT,left the lobby,saiu do lobby

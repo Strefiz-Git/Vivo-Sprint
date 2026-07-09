@@ -34,6 +34,7 @@ signal lobby_data_updated(member_id: int)
 signal lobby_list_received(lobbies: Array)
 signal password_required(lobby_id: int)
 signal kicked(lobby_id: int)
+signal lobby_chat_message(sender: int, message: String)
 
 func _ready():
 	logger.info("SteamManager", "Initializing Steam...")
@@ -44,6 +45,7 @@ func _ready():
 	else:
 		_steam_init_offline()
 	_connect_steam_signals()
+	_check_cmdline_lobby()
 	if initialized:
 		get_tree().create_timer(5.0).timeout.connect(_debug_status)
 
@@ -100,6 +102,16 @@ func _steam_init_offline():
 	steam_name = "Offline"
 	logger.warn("SteamManager", "Steam offline. Local mode only.")
 	steam_init_failed.emit("Steam not running or steam_appid.txt not found")
+
+func _check_cmdline_lobby():
+	var args = OS.get_cmdline_args()
+	if args.is_empty() or args[0] != "+connect_lobby":
+		return
+	if args.size() > 1:
+		var lobby_id_val = int(args[1])
+		if lobby_id_val > 0:
+			logger.info("SteamManager", "+connect_lobby: joining lobby %s" % lobby_id_val)
+			join_lobby(lobby_id_val)
 
 func is_on_steam() -> bool:
 	return initialized
@@ -252,12 +264,7 @@ func _on_lobby_joined(lobby_id_val: int, _permissions: int, _locked: bool, respo
 	logger.info("SteamManager", "Callback lobby_joined: lobby_id=%s response=%s (SUCCESS=%s)" % [lobby_id_val, response, Steam.ChatRoomEnterResponse.CHAT_ROOM_ENTER_RESPONSE_SUCCESS])
 	if response == Steam.ChatRoomEnterResponse.CHAT_ROOM_ENTER_RESPONSE_SUCCESS:
 		lobby_id = lobby_id_val
-		lobby_joined.emit(lobby_id)
-		# P2P: se não formos host, ligar ao host
-		if not is_host:
-			var owner_id = Steam.getLobbyOwner(lobby_id)
-			network_manager.connect_to_steam(owner_id)
-		# Se não formos host e o lobby tiver password, verificar
+		# Verificar password ANTES de emitir lobby_joined (evita transição de cena se falhar)
 		if not is_host:
 			var stored_hash = Steam.getLobbyData(lobby_id, "lobby_password_hash")
 			if stored_hash and stored_hash != "0" and stored_hash != "":
@@ -266,9 +273,13 @@ func _on_lobby_joined(lobby_id_val: int, _permissions: int, _locked: bool, respo
 					leave_lobby()
 					lobby_join_failed.emit("Wrong password")
 					return
-				# Enviar hash da password como member data para o host verificar
 				var hash_to_send = stored_hash if _bypass_password else _pending_password_hash
 				Steam.setLobbyMemberData(lobby_id, "pw_hash", hash_to_send)
+		# Password OK (ou não há password) — agora sim emitir sinal e ligar P2P
+		lobby_joined.emit(lobby_id)
+		if not is_host:
+			var owner_id = Steam.getLobbyOwner(lobby_id)
+			network_manager.connect_to_steam(owner_id)
 		_pending_password_hash = ""
 		_bypass_password = false
 	else:
@@ -404,6 +415,10 @@ func _on_lobby_message(lobby_id_val: int, sender: int, message: String, chat_typ
 				logger.warn("SteamManager", "Kicked from lobby %s" % lobby_id_val)
 				leave_lobby()
 				kicked.emit(lobby_id_val)
+			return
+	# Reencaminhar mensagens de chat normais
+	if not message.begins_with("/"):
+		lobby_chat_message.emit(sender, message)
 
 func _on_lobby_kicked(lobby_id_kicked: int, admin_id: int, kicked_due_to_disconnect: bool):
 	logger.info("SteamManager", "Kicked from lobby %s by admin %s (disconnect=%s)" % [lobby_id_kicked, admin_id, kicked_due_to_disconnect])
