@@ -105,7 +105,7 @@ func is_on_steam() -> bool:
 	return initialized
 
 func _hash_password(password: String) -> String:
-	return str(hash(password))
+	return password.sha256_text()
 
 func create_lobby(visibility: int = Steam.LOBBY_TYPE_PUBLIC, max_players: int = 12):
 	if not initialized:

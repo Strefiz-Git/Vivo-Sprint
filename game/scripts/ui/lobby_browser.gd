@@ -48,7 +48,7 @@ func _apply_texts():
 func _on_lobby_selected(_index: int):
 	join_btn.disabled = false
 
-func _on_lobby_deselected():
+func _on_lobby_deselected(_at_position: Vector2 = Vector2(), _mouse_button_index: int = -1):
 	join_btn.disabled = true
 
 func _on_join_failed(reason: String):

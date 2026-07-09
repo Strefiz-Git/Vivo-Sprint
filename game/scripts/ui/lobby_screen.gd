@@ -47,11 +47,11 @@ func _ready():
 		Steam.setLobbyJoinable(steam_manager.lobby_id, true)
 
 func _setup_tree():
-	player_tree.set_column_title(0, "")
+	player_tree.set_column_title(0, tr("LOBBY_RDY"))
 	player_tree.set_column_title(1, tr("LOBBY_PLAYER_NAME"))
 	player_tree.set_column_title(2, tr("LOBBY_PING"))
 	player_tree.set_column_title(3, "")
-	player_tree.set_column_custom_minimum_width(0, 30)
+	player_tree.set_column_custom_minimum_width(0, 40)
 	player_tree.set_column_custom_minimum_width(2, 70)
 	player_tree.set_column_custom_minimum_width(3, 120)
 	player_tree.set_column_expand(0, false)
@@ -133,13 +133,15 @@ func _atualizar_jogadores():
 			badges += tr("LOBBY_HOST")
 		if _player_rows.has(sid):
 			var item = _player_rows[sid]
-			item.set_text(0, "✓" if is_ready else "○")
+			item.set_text(0, "✓" if is_ready else "—")
+			item.set_custom_color(0, Color.GREEN_YELLOW if is_ready else Color.GRAY)
 			item.set_text(1, nome)
 			item.set_text(2, ping)
 			item.set_text(3, badges)
 		else:
 			var item = player_tree.create_item()
-			item.set_text(0, "✓" if is_ready else "○")
+			item.set_text(0, "✓" if is_ready else "—")
+			item.set_custom_color(0, Color.GREEN_YELLOW if is_ready else Color.GRAY)
 			item.set_text(1, nome)
 			item.set_text(2, ping)
 			item.set_text(3, badges)
@@ -203,7 +205,7 @@ func _on_invite_pressed():
 func _on_add_friend_pressed():
 	logger.info("LobbyScreen", "Opening Steam add friend overlay for %s" % _selected_sid)
 	if steam_manager.initialized and _selected_sid != 0:
-		Steam.activateGameOverlayToUser("FriendAdd", _selected_sid)
+		Steam.activateGameOverlayToUser("friendadd", _selected_sid)
 
 func _on_transfer_pressed():
 	if _selected_sid == 0:
