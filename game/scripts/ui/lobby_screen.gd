@@ -33,6 +33,8 @@ var _selected_sid: int = 0
 var _player_rows: Dictionary = {}
 var _pings: Dictionary = {}
 var _ping_timer: Timer = null
+var _auto_start_timer: Timer = null
+var _auto_start_seconds: int = 0
 
 func _ready():
 	logger.info("LobbyScreen", "Lobby screen opened")
@@ -49,6 +51,12 @@ func _ready():
 	chat_send_btn.pressed.connect(_on_chat_send_btn)
 	steam_manager.lobby_chat_message.connect(_on_lobby_chat_message)
 	chat_display.append_text("[color=green]%s[/color]\n" % tr("CHAT_WELCOME"))
+	# Inicializar auto-start timer (criar antes de _atualizar_jogadores)
+	_auto_start_timer = Timer.new()
+	_auto_start_timer.one_shot = false
+	_auto_start_timer.wait_time = 1.0
+	_auto_start_timer.timeout.connect(_on_auto_start_tick)
+	add_child(_auto_start_timer)
 	# Inicializar ping timer (host faz ping periódico)
 	_ping_timer = Timer.new()
 	_ping_timer.wait_time = 3.0
@@ -193,14 +201,29 @@ func _atualizar_jogadores():
 			item.set_text(3, badges)
 			item.set_metadata(0, sid)
 			_player_rows[sid] = item
+	config_btn.visible = steam_manager.is_host
+	start_btn.visible = steam_manager.is_host
 	if steam_manager.is_host != era_host:
-		config_btn.visible = steam_manager.is_host
-		start_btn.visible = steam_manager.is_host
 		ready_btn.disabled = steam_manager.is_host
 		if not steam_manager.is_host:
 			player_actions.visible = false
 	logger.info("LobbyScreen", "%d players in lobby" % count)
-	status_label.text = tr("LOBBY_PLAYERS") % [count, max_count]
+	if not _auto_start_timer.is_stopped():
+		status_label.text = "Starting in %ds..." % _auto_start_seconds
+	elif steam_manager.is_host and count > 0:
+		var all_ready = true
+		for sid in active_sids:
+			if Steam.getLobbyMemberData(steam_manager.lobby_id, sid, "ready") != "true":
+				all_ready = false
+				break
+		if all_ready:
+			if _auto_start_timer.is_stopped():
+				_start_auto_countdown()
+		else:
+			_cancel_auto_start()
+			status_label.text = tr("LOBBY_PLAYERS") % [count, max_count]
+	else:
+		status_label.text = tr("LOBBY_PLAYERS") % [count, max_count]
 	# Forçar refresh visual da Tree
 	player_tree.queue_redraw()
 	# Mostrar dados crus no debug_label
@@ -239,14 +262,40 @@ func _on_ready_pressed():
 	logger.info("LobbyScreen", "Ready toggled: %s" % _i_am_ready)
 
 func _on_start_pressed():
+	_cancel_auto_start()
 	logger.info("LobbyScreen", "Host: starting race via P2P")
 	status_label.text = tr("LOBBY_STARTING")
 	start_btn.disabled = true
 	Steam.setLobbyJoinable(steam_manager.lobby_id, false)
 	_enviar_iniciar_corrida.rpc()
 
+func _start_auto_countdown():
+	_auto_start_seconds = 15
+	_auto_start_timer.start()
+	_update_auto_start_ui()
+
+func _cancel_auto_start():
+	if not _auto_start_timer.is_stopped():
+		_auto_start_timer.stop()
+	_auto_start_seconds = 0
+	start_btn.text = tr("LOBBY_START_RACE")
+	start_btn.disabled = false
+
+func _on_auto_start_tick():
+	_auto_start_seconds -= 1
+	if _auto_start_seconds <= 0:
+		_auto_start_timer.stop()
+		_enviar_iniciar_corrida.rpc()
+	else:
+		_update_auto_start_ui()
+
+func _update_auto_start_ui():
+	start_btn.text = "Auto %ds" % _auto_start_seconds
+	status_label.text = "Starting in %ds..." % _auto_start_seconds
+
 @rpc("any_peer", "call_local", "reliable")
 func _enviar_iniciar_corrida():
+	_cancel_auto_start()
 	logger.info("LobbyScreen", "Race start RPC received by peer %s" % multiplayer.get_unique_id())
 	status_label.text = tr("LOBBY_STARTING")
 	if not steam_manager.is_host:
@@ -370,6 +419,8 @@ func _on_kicked(_lobby_id: int):
 func _exit_tree():
 	if _ping_timer:
 		_ping_timer.stop()
+	if _auto_start_timer:
+		_auto_start_timer.stop()
 
 func _on_lobby_left():
 	logger.info("LobbyScreen", "Left lobby, back to menu")
