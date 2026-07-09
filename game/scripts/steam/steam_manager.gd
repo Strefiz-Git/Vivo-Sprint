@@ -10,6 +10,7 @@ var _debug_time: float = 0.0
 var _pending_callbacks: Array[String] = []
 var pending_lobby_name: String = ""
 var pending_lobby_password: String = ""
+var _pending_password_hash: String = ""
 var _pending_visibility: int = Steam.LOBBY_TYPE_PUBLIC
 var _pending_max_players: int = 12
 
@@ -18,6 +19,8 @@ var _search_lobby_data: Dictionary = {}
 var _search_password_filter: bool = false
 var _search_emitted_list: bool = false
 var _search_start_time: float = 0.0
+
+var _bypass_password: bool = false
 
 signal steam_ready(steam_id: int, name: String)
 signal steam_init_failed(reason: String)
@@ -29,6 +32,8 @@ signal member_joined(steam_id: int)
 signal member_left(steam_id: int)
 signal lobby_data_updated(member_id: int)
 signal lobby_list_received(lobbies: Array)
+signal password_required(lobby_id: int)
+signal kicked(lobby_id: int)
 
 func _ready():
 	logger.info("SteamManager", "Initializing Steam...")
@@ -99,6 +104,9 @@ func _steam_init_offline():
 func is_on_steam() -> bool:
 	return initialized
 
+func _hash_password(password: String) -> String:
+	return str(hash(password))
+
 func create_lobby(visibility: int = Steam.LOBBY_TYPE_PUBLIC, max_players: int = 12):
 	if not initialized:
 		logger.warn("SteamManager", "Tried to create lobby but Steam offline")
@@ -106,14 +114,16 @@ func create_lobby(visibility: int = Steam.LOBBY_TYPE_PUBLIC, max_players: int = 
 	logger.info("SteamManager", "Creating lobby... visibility=%s max=%s" % [visibility, max_players])
 	_pending_visibility = visibility
 	_pending_max_players = max_players
+	_pending_password_hash = _hash_password(pending_lobby_password) if pending_lobby_password else ""
 	Steam.createLobby(visibility, max_players)
 	logger.info("SteamManager", "createLobby called (void, no return)")
 	_pending_callbacks.append("lobby_created")
 
-func join_lobby(target_lobby_id: int):
+func join_lobby(target_lobby_id: int, password: String = ""):
 	if not initialized:
 		return
 	logger.info("SteamManager", "Joining lobby %s..." % target_lobby_id)
+	_pending_password_hash = _hash_password(password) if password else ""
 	Steam.joinLobby(target_lobby_id)
 
 func leave_lobby():
@@ -125,6 +135,9 @@ func leave_lobby():
 	is_host = false
 	pending_lobby_name = ""
 	pending_lobby_password = ""
+	_pending_password_hash = ""
+	_bypass_password = false
+	network_manager.stop_steam()
 	lobby_left.emit()
 
 func request_lobby_list():
@@ -157,7 +170,11 @@ func set_lobby_name(name: String):
 	set_lobby_data("lobby_name", name)
 
 func set_lobby_password(password: String):
-	set_lobby_data("lobby_password", password)
+	_pending_password_hash = _hash_password(password) if password else ""
+	if _pending_password_hash:
+		set_lobby_data("lobby_password_hash", _pending_password_hash)
+	else:
+		set_lobby_data("lobby_password_hash", "")
 
 func set_lobby_joinable(joinable: bool):
 	if lobby_id == 0:
@@ -198,8 +215,17 @@ func transfer_ownership(target_steam_id: int):
 	Steam.setLobbyOwner(lobby_id, target_steam_id)
 	is_host = false
 
+func _kick_player(target_steam_id: int):
+	if not is_host or lobby_id == 0:
+		return
+	logger.info("SteamManager", "Sending kick to %s" % target_steam_id)
+	Steam.sendLobbyChatMsg(lobby_id, "/kick %s" % target_steam_id)
+
 func kick_user(target_steam_id: int):
-	logger.warn("SteamManager", "Kick not supported in this GodotSteam version")
+	if not is_host:
+		logger.warn("SteamManager", "Only host can kick")
+		return
+	_kick_player(target_steam_id)
 
 func _on_lobby_created(connect_status: int, lobby_id_val: int):
 	_pending_callbacks.erase("lobby_created")
@@ -212,6 +238,10 @@ func _on_lobby_created(connect_status: int, lobby_id_val: int):
 		set_lobby_data("lobby_name", "%s's Lobby" % steam_name)
 		set_lobby_data("lobby_visibility", str(_pending_visibility))
 		set_lobby_data("lobby_max_players", str(_pending_max_players))
+		if _pending_password_hash:
+			set_lobby_data("lobby_password_hash", _pending_password_hash)
+		# Iniciar P2P como host
+		network_manager.start_steam_host()
 		lobby_created.emit(lobby_id)
 	else:
 		logger.warn("SteamManager", "Failed to create lobby. Code: %s" % connect_status)
@@ -223,6 +253,24 @@ func _on_lobby_joined(lobby_id_val: int, _permissions: int, _locked: bool, respo
 	if response == Steam.ChatRoomEnterResponse.CHAT_ROOM_ENTER_RESPONSE_SUCCESS:
 		lobby_id = lobby_id_val
 		lobby_joined.emit(lobby_id)
+		# P2P: se não formos host, ligar ao host
+		if not is_host:
+			var owner_id = Steam.getLobbyOwner(lobby_id)
+			network_manager.connect_to_steam(owner_id)
+		# Se não formos host e o lobby tiver password, verificar
+		if not is_host:
+			var stored_hash = Steam.getLobbyData(lobby_id, "lobby_password_hash")
+			if stored_hash and stored_hash != "0" and stored_hash != "":
+				if not _bypass_password and _pending_password_hash != stored_hash:
+					logger.warn("SteamManager", "Wrong password for lobby %s, leaving" % lobby_id)
+					leave_lobby()
+					lobby_join_failed.emit("Wrong password")
+					return
+				# Enviar hash da password como member data para o host verificar
+				var hash_to_send = stored_hash if _bypass_password else _pending_password_hash
+				Steam.setLobbyMemberData(lobby_id, "pw_hash", hash_to_send)
+		_pending_password_hash = ""
+		_bypass_password = false
 	else:
 		var reason = "unknown"
 		match response:
@@ -233,7 +281,12 @@ func _on_lobby_joined(lobby_id_val: int, _permissions: int, _locked: bool, respo
 			Steam.ChatRoomEnterResponse.CHAT_ROOM_ENTER_RESPONSE_BANNED:
 				reason = "banned"
 		logger.warn("SteamManager", "Failed to join lobby: %s" % reason)
+		_pending_password_hash = ""
 		lobby_join_failed.emit(reason)
+
+func submit_password(lobby_id_val: int, password: String):
+	_pending_password_hash = _hash_password(password)
+	join_lobby(lobby_id_val, password)
 
 func _on_lobby_join_requested(_lobby_id: int):
 	logger.info("SteamManager", "Join request for lobby %s" % _lobby_id)
@@ -249,6 +302,15 @@ func _on_lobby_data_update(lobby_id: int, member_id: int, _success: int):
 			_coletar_dados_lobby(lobby_id)
 		return
 	if lobby_id == self.lobby_id:
+		# Host: verificar password de novos membros (apenas se pw_hash já foi definido)
+		if is_host and member_id != steam_id and member_id != 0:
+			var pw_attempt = Steam.getLobbyMemberData(lobby_id, member_id, "pw_hash")
+			if pw_attempt != "":
+				var stored_hash = Steam.getLobbyData(lobby_id, "lobby_password_hash")
+				if stored_hash and stored_hash != "" and stored_hash != "0":
+					if pw_attempt != stored_hash:
+						logger.warn("SteamManager", "Wrong password from member %s, kicking" % member_id)
+						_kick_player(member_id)
 		logger.debug("SteamManager", "Lobby member data update: lobby=%s member=%s" % [lobby_id, member_id])
 		lobby_data_updated.emit(member_id)
 
@@ -258,14 +320,15 @@ func _coletar_dados_lobby(lobby_id: int):
 	var name = Steam.getLobbyData(lobby_id, "lobby_name")
 	var player_count = Steam.getNumLobbyMembers(lobby_id)
 	var max_players = Steam.getLobbyMemberLimit(lobby_id)
-	var password = Steam.getLobbyData(lobby_id, "lobby_password")
-	logger.debug("SteamManager", "Data received lobby %s: name='%s' (%s/%s) pass='%s'" % [lobby_id, name, player_count, max_players, password])
+	var pw_hash = Steam.getLobbyData(lobby_id, "lobby_password_hash")
+	var has_password = pw_hash != "" and pw_hash != "0"
+	logger.debug("SteamManager", "Data received lobby %s: name='%s' (%s/%s) pass=%s" % [lobby_id, name, player_count, max_players, has_password])
 	_search_lobby_data[lobby_id] = {
 		"id": lobby_id,
 		"name": name if name else "%s's Lobby" % Steam.getFriendPersonaName(Steam.getLobbyOwner(lobby_id)),
 		"players": player_count,
 		"max_players": max_players,
-		"password": password
+		"password": "protected" if has_password else ""
 	}
 	if _search_lobby_data.size() >= _search_lobby_ids.size():
 		logger.info("SteamManager", "All data received, emitting list")
@@ -329,10 +392,18 @@ func _emit_lobby_list():
 
 func _on_lobby_invite(_inviter: int, _lobby_id: int, _game_id: int):
 	logger.info("SteamManager", "Invite to lobby %s from %s" % [_lobby_id, _inviter])
+	_bypass_password = true
 	join_lobby(_lobby_id)
 
 func _on_lobby_message(lobby_id_val: int, sender: int, message: String, chat_type: int):
 	logger.info("SteamManager", "Message lobby %s from %s: %s" % [lobby_id_val, sender, message])
+	if message.begins_with("/") and sender == Steam.getLobbyOwner(lobby_id_val):
+		var parts = message.split(" ", false)
+		if parts[0] == "/kick" and parts.size() > 1:
+			if steam_id == int(parts[1]):
+				logger.warn("SteamManager", "Kicked from lobby %s" % lobby_id_val)
+				leave_lobby()
+				kicked.emit(lobby_id_val)
 
 func _on_lobby_kicked(lobby_id_kicked: int, admin_id: int, kicked_due_to_disconnect: bool):
 	logger.info("SteamManager", "Kicked from lobby %s by admin %s (disconnect=%s)" % [lobby_id_kicked, admin_id, kicked_due_to_disconnect])
@@ -340,6 +411,8 @@ func _on_lobby_kicked(lobby_id_kicked: int, admin_id: int, kicked_due_to_disconn
 	is_host = false
 	pending_lobby_name = ""
 	pending_lobby_password = ""
+	_pending_password_hash = ""
+	_bypass_password = false
 	lobby_left.emit()
 
 func _on_lobby_game_created(_lobby_id: int, _ip: int, _port: int):

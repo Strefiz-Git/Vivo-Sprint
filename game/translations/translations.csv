@@ -77,3 +77,16 @@ SETTINGS_FPS_UNLIMITED,Unlimited,Ilimitado
 SETTINGS_LANG_PT,Português,Português
 SETTINGS_LANG_EN,English,English
 SETTINGS_BACK,Back,Voltar
+LOBBY_KICKED,You were kicked from the lobby,Foste expulso do lobby
+BROWSER_PASSWORD_TITLE,Password Required,Password Necessária
+BROWSER_PASSWORD_LABEL,This lobby requires a password:,Este lobby requer uma password:
+BROWSER_PASSWORD_OK,OK,OK
+BROWSER_PASSWORD_CANCEL,Cancel,Cancelar
+BROWSER_WRONG_PASSWORD,Wrong password,Password errada
+BROWSER_PASSWORD_REQUIRED,Password required,Password necessária
+LOBBY_PLAYER_NAME,Player,Jogador
+LOBBY_PING,Ping,Ping
+LOBBY_ADD_FRIEND,Add Friend,Adicionar Amigo
+LOBBY_INVITE,Invite Friends,Convidar Amigos
+LOBBY_PASSWORD_PROTECTED,Password protected,Protegido por password
+LOBBY_NO_PASSWORD,No password,Sem password

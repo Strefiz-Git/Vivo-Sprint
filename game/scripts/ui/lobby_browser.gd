@@ -9,7 +9,11 @@ extends Control
 @onready var back_btn: Button = $VBoxContainer/HBoxActions/back_btn
 @onready var status_label: Label = $VBoxContainer/status_label
 
+@onready var password_dialog: Window = $password_dialog
+@onready var password_input: LineEdit = $password_dialog/VBox/password_input
+
 var _all_lobbies: Array[Dictionary] = []
+var _pending_join_lobby_id: int = 0
 
 func _ready():
 	logger.info("LobbyBrowser", "Browser scene opened")
@@ -36,6 +40,10 @@ func _apply_texts():
 	refresh_btn.text = tr("BROWSER_REFRESH")
 	join_btn.text = tr("BROWSER_JOIN")
 	back_btn.text = tr("BROWSER_BACK")
+	password_dialog.title = tr("BROWSER_PASSWORD_TITLE")
+	$password_dialog/VBox/label.text = tr("BROWSER_PASSWORD_LABEL")
+	$password_dialog/VBox/HB/pw_ok.text = tr("BROWSER_PASSWORD_OK")
+	$password_dialog/VBox/HB/pw_cancel.text = tr("BROWSER_PASSWORD_CANCEL")
 
 func _on_lobby_selected(_index: int):
 	join_btn.disabled = false
@@ -88,11 +96,45 @@ func _on_search_input_changed(_new_text: String):
 
 func _on_join_pressed():
 	var selected = lobby_list.get_selected_items()
-	if selected.size() > 0:
-		var meta = lobby_list.get_item_metadata(selected[0])
-		logger.info("LobbyBrowser", "Joining lobby %s" % meta)
-		status_label.text = tr("BROWSER_ENTERING")
-		steam_manager.join_lobby(meta)
+	if selected.size() == 0:
+		return
+	var lobby_id_val = lobby_list.get_item_metadata(selected[0])
+	# Procurar dados completos da lobby
+	var lobby_data = null
+	for l in _all_lobbies:
+		if l.id == lobby_id_val:
+			lobby_data = l
+			break
+	if lobby_data and lobby_data.password != "":
+		# Pedir password
+		_pending_join_lobby_id = lobby_id_val
+		password_input.text = ""
+		password_dialog.popup_centered()
+		password_input.grab_focus()
+		return
+	_do_join(lobby_id_val)
+
+func _on_password_ok(_submitted_text: String = ""):
+	var password = password_input.text.strip_edges()
+	if _pending_join_lobby_id == 0:
+		return
+	password_dialog.hide()
+	if password.is_empty():
+		status_label.text = tr("BROWSER_FAILED") % tr("BROWSER_PASSWORD_REQUIRED")
+		_pending_join_lobby_id = 0
+		return
+	status_label.text = tr("BROWSER_ENTERING")
+	steam_manager.submit_password(_pending_join_lobby_id, password)
+	_pending_join_lobby_id = 0
+
+func _on_password_cancel():
+	password_dialog.hide()
+	_pending_join_lobby_id = 0
+
+func _do_join(lobby_id_val: int):
+	logger.info("LobbyBrowser", "Joining lobby %s" % lobby_id_val)
+	status_label.text = tr("BROWSER_ENTERING")
+	steam_manager.join_lobby(lobby_id_val)
 
 func _on_back_pressed():
 	logger.info("LobbyBrowser", "Back to menu")

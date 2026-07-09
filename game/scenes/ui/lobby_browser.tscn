@@ -67,8 +67,48 @@ text = "Back"
 layout_mode = 2
 text = "Create Lobby"
 
+[node name="password_dialog" type="Window" parent="."]
+title = "Password Required"
+visible = false
+size = Vector2i(300, 150)
+
+[node name="VBox" type="VBoxContainer" parent="password_dialog"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="label" type="Label" parent="password_dialog/VBox"]
+layout_mode = 2
+text = "This lobby requires a password:"
+
+[node name="password_input" type="LineEdit" parent="password_dialog/VBox"]
+layout_mode = 2
+secret = true
+
+[node name="error_label" type="Label" parent="password_dialog/VBox"]
+layout_mode = 2
+text = ""
+
+
+[node name="HB" type="HBoxContainer" parent="password_dialog/VBox"]
+layout_mode = 2
+
+[node name="pw_ok" type="Button" parent="password_dialog/VBox/HB"]
+layout_mode = 2
+text = "OK"
+
+[node name="pw_cancel" type="Button" parent="password_dialog/VBox/HB"]
+layout_mode = 2
+text = "Cancel"
+
 [connection signal="text_changed" from="VBoxContainer/search_input" to="." method="_on_search_input_changed"]
 [connection signal="pressed" from="VBoxContainer/HBoxFilters/refresh_btn" to="." method="_on_refresh_pressed"]
 [connection signal="pressed" from="VBoxContainer/HBoxActions/join_btn" to="." method="_on_join_pressed"]
 [connection signal="pressed" from="VBoxContainer/HBoxActions/back_btn" to="." method="_on_back_pressed"]
 [connection signal="pressed" from="VBoxContainer/btn_criar" to="." method="_on_criar_pressed"]
+[connection signal="text_submitted" from="password_dialog/VBox/password_input" to="." method="_on_password_ok"]
+[connection signal="pressed" from="password_dialog/VBox/HB/pw_ok" to="." method="_on_password_ok"]
+[connection signal="pressed" from="password_dialog/VBox/HB/pw_cancel" to="." method="_on_password_cancel"]

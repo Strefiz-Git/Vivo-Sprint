@@ -3,7 +3,7 @@ extends Node
 const DEFAULT_PORT: int = 27015
 const MAX_PLAYERS: int = 20
 
-var peer: ENetMultiplayerPeer = null
+var peer: MultiplayerPeer = null
 var is_server: bool = false
 var is_client: bool = false
 var server_ip: String = "127.0.0.1"
@@ -56,6 +56,47 @@ func disconnect_from_server():
 		multiplayer.multiplayer_peer = null
 	is_client = false
 
+# --- Steam P2P (SteamMultiplayerPeer) ---
+
+func start_steam_host():
+	if not steam_manager.initialized:
+		logger.warn("NetworkManager", "Cannot start Steam P2P host: Steam not initialized")
+		server_start_failed.emit("Steam not initialized")
+		return
+	logger.info("NetworkManager", "Starting Steam P2P host...")
+	peer = SteamMultiplayerPeer.new()
+	peer.create_host(0)
+	peer.server_relay = true
+	multiplayer.multiplayer_peer = peer
+	is_server = true
+	is_client = false
+	logger.info("NetworkManager", "Steam P2P host started")
+	server_started.emit(0)
+
+func connect_to_steam(lobby_owner_id: int):
+	if not steam_manager.initialized:
+		logger.warn("NetworkManager", "Cannot connect to Steam P2P: Steam not initialized")
+		client_disconnected.emit("Steam not initialized")
+		return
+	logger.info("NetworkManager", "Connecting to Steam P2P host %s..." % lobby_owner_id)
+	peer = SteamMultiplayerPeer.new()
+	peer.create_client(lobby_owner_id, 0)
+	peer.server_relay = true
+	multiplayer.multiplayer_peer = peer
+	is_client = true
+	is_server = false
+	logger.info("NetworkManager", "Steam P2P client connecting to %s" % lobby_owner_id)
+
+func stop_steam():
+	if peer:
+		peer.close()
+		multiplayer.multiplayer_peer = null
+	is_server = false
+	is_client = false
+	logger.info("NetworkManager", "Steam P2P stopped")
+
+# --- Common ---
+
 func get_player_list() -> Array[int]:
 	var ids: Array[int] = []
 	ids.append(multiplayer.get_unique_id())
@@ -68,12 +109,15 @@ func is_multiplayer_active() -> bool:
 
 func _on_player_connected(id: int):
 	player_connected.emit(id)
+	logger.info("NetworkManager", "Player connected: %s" % id)
 
 func _on_player_disconnected(id: int):
 	player_disconnected.emit(id)
+	logger.info("NetworkManager", "Player disconnected: %s" % id)
 
 func _on_connected_to_server():
 	client_connected.emit()
+	logger.info("NetworkManager", "Connected to server")
 
 func _on_connection_failed():
 	client_disconnected.emit("Connection failed")
