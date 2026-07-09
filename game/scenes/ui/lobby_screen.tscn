@@ -33,34 +33,34 @@ layout_mode = 2
 
 [node name="ready_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
-text = "Pronto"
+text = "Ready"
 
 [node name="start_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
-text = "Iniciar Corrida"
+text = "Start Race"
 visible = false
 
 [node name="transfer_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
-text = "Passar Liderança"
+text = "Transfer Host"
 visible = false
 
 [node name="kick_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
-text = "Expulsar"
+text = "Kick"
 visible = false
 
 [node name="config_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
-text = "Configurar"
+text = "Configure"
 visible = false
 
 [node name="leave_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
-text = "Sair Lobby"
+text = "Leave Lobby"
 
 [node name="config_window" type="Window" parent="."]
-title = "Configurar Lobby"
+title = "Configure Lobby"
 visible = false
 size = Vector2i(400, 320)
 
@@ -74,14 +74,14 @@ grow_vertical = 2
 
 [node name="lbl_name" type="Label" parent="config_window/VBox"]
 layout_mode = 2
-text = "Nome do Lobby:"
+text = "Lobby Name:"
 
 [node name="cfg_name" type="LineEdit" parent="config_window/VBox"]
 layout_mode = 2
 
 [node name="lbl_max" type="Label" parent="config_window/VBox"]
 layout_mode = 2
-text = "Max. Jogadores:"
+text = "Max. Players:"
 
 [node name="cfg_max" type="HSlider" parent="config_window/VBox"]
 layout_mode = 2
@@ -104,7 +104,7 @@ secret = true
 
 [node name="lbl_vis" type="Label" parent="config_window/VBox"]
 layout_mode = 2
-text = "Visibilidade:"
+text = "Visibility:"
 
 [node name="cfg_vis" type="OptionButton" parent="config_window/VBox"]
 layout_mode = 2
@@ -114,11 +114,11 @@ layout_mode = 2
 
 [node name="cfg_save" type="Button" parent="config_window/VBox/HB"]
 layout_mode = 2
-text = "Guardar"
+text = "Save"
 
 [node name="cfg_cancel" type="Button" parent="config_window/VBox/HB"]
 layout_mode = 2
-text = "Cancelar"
+text = "Cancel"
 
 [connection signal="pressed" from="VBoxContainer/HBoxContainer/ready_btn" to="." method="_on_ready_pressed"]
 [connection signal="pressed" from="VBoxContainer/HBoxContainer/start_btn" to="." method="_on_start_pressed"]

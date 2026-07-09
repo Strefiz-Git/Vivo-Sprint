@@ -25,12 +25,18 @@ settings="*res://scripts/settings.gd"
 scene_manager="*res://scripts/ui/scene_manager.gd"
 steam_manager="*res://scripts/steam/steam_manager.gd"
 network_manager="*res://scripts/network/network_manager.gd"
+locale_manager="*res://scripts/localization/locale_manager.gd"
 resource_cache="*res://scripts/resource_cache.gd"
 
 [display]
 
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[locale]
+
+translations=PackedStringArray("res://translations/translations.csv")
+test="pt"
 
 [physics]
 

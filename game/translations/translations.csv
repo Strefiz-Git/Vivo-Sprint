@@ -1,0 +1,79 @@
+keys,en,pt
+MENU_TITLE,VIVO SPRINT,VIVO SPRINT
+MENU_STATUS_INIT,Steam: Initializing...,Steam: A inicializar...
+MENU_STATUS_ONLINE,Steam: ONLINE,Steam: CONECTADO
+MENU_STATUS_OFFLINE,Steam: OFFLINE,Steam: OFFLINE
+MENU_SINGLEPLAYER,Singleplayer,Singleplayer
+MENU_MULTIPLAYER,Multiplayer,Multiplayer
+MENU_SETTINGS,Settings,Definições
+MENU_QUIT,Quit,Sair
+BROWSER_TITLE,Find Lobbies,Procurar Lobbies
+BROWSER_CREATE,Create Lobby,Criar Lobby
+BROWSER_SEARCH_PLACEHOLDER,Search by name...,Pesquisar por nome...
+BROWSER_DISTANCE,Distance:,Distância:
+BROWSER_NO_PASSWORD,No password,Sem password
+BROWSER_REFRESH,Refresh,Atualizar
+BROWSER_JOIN,Join,Entrar
+BROWSER_BACK,Back,Voltar
+BROWSER_SEARCHING,Searching for lobbies...,A pesquisar lobbies...
+BROWSER_ENTERING,Joining lobby...,A entrar no lobby...
+BROWSER_FAILED,Failed: %s,Falha: %s
+BROWSER_FOUND,%d lobbies found,%d lobbies encontrados
+BROWSER_NO_NAME,No name,Sem nome
+FILTER_CLOSE,Close,Próximo
+FILTER_DEFAULT,Default,Default
+FILTER_FAR,Far,Longe
+FILTER_WORLDWIDE,Worldwide,Mundo
+CREATE_TITLE,Create Lobby,Criar Lobby
+CREATE_NAME_LABEL,Lobby Name:,Nome do Lobby:
+CREATE_NAME_PLACEHOLDER,My Lobby,Meu Lobby
+CREATE_PLAYERS,Players: %d,Jogadores: %d
+CREATE_PASSWORD_LABEL,Password (optional):,Password (opcional):
+CREATE_VIS_LABEL,Visibility:,Visibilidade:
+CREATE_CREATE,Create,Criar
+CREATE_BACK,Back,Voltar
+CREATE_OFFLINE,Steam offline,Steam offline
+CREATE_CREATING,Creating lobby...,A criar lobby...
+CREATE_CREATED,Lobby created! ID: %s,Lobby criada! ID: %s
+CREATE_FAILED,Failed: %s,Falha: %s
+VISIBILITY_PUBLIC,Public,Público
+VISIBILITY_FRIENDS,Friends Only,Amigos
+VISIBILITY_PRIVATE,Private,Privado
+VISIBILITY_INVISIBLE,Invisible,Invisível
+LOBBY_TITLE,Lobby: %s,Lobby: %s
+LOBBY_READY,Ready,Pronto
+LOBBY_NOT_READY,Not Ready,Não Pronto
+LOBBY_START_RACE,Start Race,Iniciar Corrida
+LOBBY_TRANSFER,Transfer Host,Passar Liderança
+LOBBY_KICK,Kick,Expulsar
+LOBBY_CONFIG,Configure,Configurar
+LOBBY_LEAVE,Leave Lobby,Sair Lobby
+LOBBY_PLAYERS,%d/%d players,%d/%d jogadores
+LOBBY_YOU,(you),(tu)
+LOBBY_HOST,[HOST],[HOST]
+LOBBY_CONFIG_SAVED,Configuration saved,Configuração guardada
+LOBBY_STARTING,Starting race...,A iniciar corrida...
+CONFIG_TITLE,Configure Lobby,Configurar Lobby
+CONFIG_NAME_LABEL,Lobby Name:,Nome do Lobby:
+CONFIG_MAX_LABEL,Max. Players:,Máx. Jogadores:
+CONFIG_PASS_LABEL,Password:,Password:
+CONFIG_VIS_LABEL,Visibility:,Visibilidade:
+CONFIG_SAVE,Save,Guardar
+CONFIG_CANCEL,Cancel,Cancelar
+SETTINGS_TITLE,Settings,Definições
+SETTINGS_AUDIO,Audio,Áudio
+SETTINGS_VIDEO,Video,Vídeo
+SETTINGS_LANGUAGE,Language,Idioma
+SETTINGS_MASTER_VOL,Master Volume,Volume Master
+SETTINGS_SFX_VOL,SFX Volume,Volume SFX
+SETTINGS_MUSIC_VOL,Music Volume,Volume Música
+SETTINGS_WINDOW_MODE,Window Mode,Tipo de Janela
+SETTINGS_WINDOW_WINDOWED,Windowed,Janela
+SETTINGS_WINDOW_FULLSCREEN,Fullscreen,Ecrã Inteiro
+SETTINGS_WINDOW_BORDERLESS,Borderless,Sem Borda
+SETTINGS_RESOLUTION,Resolution,Resolução
+SETTINGS_FPS_LIMIT,FPS Limit,Limite FPS
+SETTINGS_FPS_UNLIMITED,Unlimited,Ilimitado
+SETTINGS_LANG_PT,Português,Português
+SETTINGS_LANG_EN,English,English
+SETTINGS_BACK,Back,Voltar

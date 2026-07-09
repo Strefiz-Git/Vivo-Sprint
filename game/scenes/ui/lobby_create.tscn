@@ -18,19 +18,19 @@ offset_bottom = 40.0
 
 [node name="title" type="Label" parent="VBoxContainer"]
 layout_mode = 2
-text = "Criar Lobby"
+text = "Create Lobby"
 
 [node name="name_label" type="Label" parent="VBoxContainer"]
 layout_mode = 2
-text = "Nome do Lobby:"
+text = "Lobby Name:"
 
 [node name="name_input" type="LineEdit" parent="VBoxContainer"]
 layout_mode = 2
-placeholder_text = "Meu Lobby"
+placeholder_text = "My Lobby"
 
 [node name="player_label" type="Label" parent="VBoxContainer"]
 layout_mode = 2
-text = "Jogadores: 8"
+text = "Players: 8"
 
 [node name="player_slider" type="HSlider" parent="VBoxContainer"]
 layout_mode = 2
@@ -41,7 +41,7 @@ value = 8.0
 
 [node name="password_label" type="Label" parent="VBoxContainer"]
 layout_mode = 2
-text = "Password (opcional):"
+text = "Password (optional):"
 
 [node name="password_input" type="LineEdit" parent="VBoxContainer"]
 layout_mode = 2
@@ -50,7 +50,7 @@ secret = true
 
 [node name="vis_label" type="Label" parent="VBoxContainer"]
 layout_mode = 2
-text = "Visibilidade:"
+text = "Visibility:"
 
 [node name="visibility_option" type="OptionButton" parent="VBoxContainer"]
 layout_mode = 2
@@ -60,11 +60,11 @@ layout_mode = 2
 
 [node name="create_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
-text = "Criar"
+text = "Create"
 
 [node name="back_btn" type="Button" parent="VBoxContainer/HBoxContainer"]
 layout_mode = 2
-text = "Voltar"
+text = "Back"
 
 [node name="status_label" type="Label" parent="VBoxContainer"]
 layout_mode = 2

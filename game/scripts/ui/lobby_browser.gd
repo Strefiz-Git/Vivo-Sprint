@@ -12,12 +12,13 @@ extends Control
 var _all_lobbies: Array[Dictionary] = []
 
 func _ready():
-	logger.info("LobbyBrowser", "Cena de browser aberta")
+	logger.info("LobbyBrowser", "Browser scene opened")
+	_apply_texts()
 	join_btn.disabled = true
-	filter_distance.add_item("Próximo", Steam.LOBBY_DISTANCE_FILTER_CLOSE)
-	filter_distance.add_item("Default", Steam.LOBBY_DISTANCE_FILTER_DEFAULT)
-	filter_distance.add_item("Longe", Steam.LOBBY_DISTANCE_FILTER_FAR)
-	filter_distance.add_item("Mundo", Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
+	filter_distance.add_item(tr("FILTER_CLOSE"), Steam.LOBBY_DISTANCE_FILTER_CLOSE)
+	filter_distance.add_item(tr("FILTER_DEFAULT"), Steam.LOBBY_DISTANCE_FILTER_DEFAULT)
+	filter_distance.add_item(tr("FILTER_FAR"), Steam.LOBBY_DISTANCE_FILTER_FAR)
+	filter_distance.add_item(tr("FILTER_WORLDWIDE"), Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
 	filter_distance.select(1)
 	lobby_list.item_selected.connect(_on_lobby_selected)
 	lobby_list.empty_clicked.connect(_on_lobby_deselected)
@@ -26,6 +27,16 @@ func _ready():
 	steam_manager.lobby_join_failed.connect(_on_join_failed)
 	_on_refresh_pressed()
 
+func _apply_texts():
+	$VBoxContainer/title.text = tr("BROWSER_TITLE")
+	$VBoxContainer/btn_criar.text = tr("BROWSER_CREATE")
+	search_input.placeholder_text = tr("BROWSER_SEARCH_PLACEHOLDER")
+	$VBoxContainer/HBoxFilters/dist_label.text = tr("BROWSER_DISTANCE")
+	filter_password.text = tr("BROWSER_NO_PASSWORD")
+	refresh_btn.text = tr("BROWSER_REFRESH")
+	join_btn.text = tr("BROWSER_JOIN")
+	back_btn.text = tr("BROWSER_BACK")
+
 func _on_lobby_selected(_index: int):
 	join_btn.disabled = false
 
@@ -33,18 +44,18 @@ func _on_lobby_deselected():
 	join_btn.disabled = true
 
 func _on_join_failed(reason: String):
-	logger.warn("LobbyBrowser", "Falha ao entrar: %s" % reason)
-	status_label.text = "Falha: %s" % reason
+	logger.warn("LobbyBrowser", "Failed to join: %s" % reason)
+	status_label.text = tr("BROWSER_FAILED") % reason
 	join_btn.disabled = false
 
 func _on_criar_pressed():
-	logger.info("LobbyBrowser", "Criar lobby")
+	logger.info("LobbyBrowser", "Create lobby")
 	scene_manager.goto_scene("res://scenes/ui/lobby_create.tscn")
 
 func _on_refresh_pressed():
-	logger.info("LobbyBrowser", "A pesquisar lobbies...")
+	logger.info("LobbyBrowser", "Searching for lobbies...")
 	join_btn.disabled = true
-	status_label.text = "A pesquisar lobbies..."
+	status_label.text = tr("BROWSER_SEARCHING")
 	_all_lobbies.clear()
 	lobby_list.clear()
 	var dist = filter_distance.get_selected_id()
@@ -53,8 +64,8 @@ func _on_refresh_pressed():
 func _on_lobby_list(lobbies: Array):
 	_all_lobbies = lobbies
 	_filtrar_lista()
-	status_label.text = "%d lobbies encontrados" % _all_lobbies.size()
-	logger.info("LobbyBrowser", "%d lobbies recebidos" % _all_lobbies.size())
+	status_label.text = tr("BROWSER_FOUND") % _all_lobbies.size()
+	logger.info("LobbyBrowser", "%d lobbies received" % _all_lobbies.size())
 
 func _filtrar_lista():
 	lobby_list.clear()
@@ -67,7 +78,7 @@ func _filtrar_lista():
 		if no_password and l.password != "":
 			continue
 		var icon = "🔓" if l.password == "" else "🔒"
-		var nome = l.name if l.name else "Sem nome"
+		var nome = l.name if l.name else tr("BROWSER_NO_NAME")
 		lobby_list.add_item("%s %s (%d/%d)" % [icon, nome, l.players, l.max_players])
 		var idx = lobby_list.item_count - 1
 		lobby_list.set_item_metadata(idx, l.id)
@@ -79,14 +90,14 @@ func _on_join_pressed():
 	var selected = lobby_list.get_selected_items()
 	if selected.size() > 0:
 		var meta = lobby_list.get_item_metadata(selected[0])
-		logger.info("LobbyBrowser", "A entrar no lobby %s" % meta)
-		status_label.text = "A entrar no lobby..."
+		logger.info("LobbyBrowser", "Joining lobby %s" % meta)
+		status_label.text = tr("BROWSER_ENTERING")
 		steam_manager.join_lobby(meta)
 
 func _on_back_pressed():
-	logger.info("LobbyBrowser", "Voltar ao menu")
+	logger.info("LobbyBrowser", "Back to menu")
 	scene_manager.goto_scene("res://scenes/ui/main_menu.tscn")
 
 func _on_lobby_joined(_lobby_id: int):
-	logger.info("LobbyBrowser", "Entrou na lobby, a navegar para lobby_screen")
+	logger.info("LobbyBrowser", "Joined lobby, navigating to lobby_screen")
 	scene_manager.goto_scene("res://scenes/ui/lobby_screen.tscn")

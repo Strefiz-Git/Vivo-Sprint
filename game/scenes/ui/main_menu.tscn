@@ -22,7 +22,7 @@ text = "VIVO SPRINT"
 
 [node name="lbl_status" type="Label" parent="VBoxContainer" unique_id=1055404802]
 layout_mode = 2
-text = "Steam: A inicializar..."
+text = "Steam: Initializing..."
 
 [node name="btn_singleplayer" type="Button" parent="VBoxContainer" unique_id=1409609874]
 layout_mode = 2
@@ -36,9 +36,14 @@ text = "Multiplayer"
 [node name="HSeparator" type="HSeparator" parent="VBoxContainer" unique_id=1006428907]
 layout_mode = 2
 
+[node name="btn_settings" type="Button" parent="VBoxContainer" unique_id=1748392015]
+layout_mode = 2
+text = "Settings"
+
 [node name="btn_quit" type="Button" parent="VBoxContainer" unique_id=1971731062]
 layout_mode = 2
-text = "Sair"
+text = "Quit"
 
 [connection signal="pressed" from="VBoxContainer/btn_multiplayer" to="." method="_on_multiplayer_pressed"]
+[connection signal="pressed" from="VBoxContainer/btn_settings" to="." method="_on_settings_pressed"]
 [connection signal="pressed" from="VBoxContainer/btn_quit" to="." method="_on_quit_pressed"]
