@@ -16,6 +16,8 @@ var _pending_max_players: int = 12
 var _search_lobby_ids: Array[int] = []
 var _search_lobby_data: Dictionary = {}
 var _search_password_filter: bool = false
+var _search_emitted_list: bool = false
+var _search_start_time: float = 0.0
 
 signal steam_ready(steam_id: int, name: String)
 signal steam_init_failed(reason: String)
@@ -136,7 +138,10 @@ func request_lobby_list_filtered(distance_filter: int, no_password: bool):
 	_search_lobby_ids.clear()
 	_search_lobby_data.clear()
 	_search_password_filter = no_password
+	_search_emitted_list = false
+	_search_start_time = 0.0
 	Steam.addRequestLobbyListDistanceFilter(distance_filter)
+	Steam.addRequestLobbyListStringFilter("game", "Vivo Sprint", Steam.LOBBY_COMPARISON_EQUAL)
 	Steam.addRequestLobbyListResultCountFilter(50)
 	Steam.requestLobbyList()
 	logger.info("SteamManager", "requestLobbyList called (void, no return)")
@@ -235,8 +240,12 @@ func _on_lobby_join_requested(_lobby_id: int):
 	join_lobby(_lobby_id)
 
 func _on_lobby_data_update(lobby_id: int, member_id: int, _success: int):
-	if member_id == 0:
-		if lobby_id in _search_lobby_ids and not _search_lobby_data.has(lobby_id):
+	logger.debug("SteamManager", "lobby_data_update: lobby=%s member=%s success=%s" % [lobby_id, member_id, _success])
+	if lobby_id in _search_lobby_ids and not _search_lobby_data.has(lobby_id):
+		if member_id == 0:
+			_coletar_dados_lobby(lobby_id)
+		else:
+			logger.warn("SteamManager", "member_id != 0 for lobby %s (member=%s), collecting anyway" % [lobby_id, member_id])
 			_coletar_dados_lobby(lobby_id)
 		return
 	if lobby_id == self.lobby_id:
@@ -244,6 +253,8 @@ func _on_lobby_data_update(lobby_id: int, member_id: int, _success: int):
 		lobby_data_updated.emit(member_id)
 
 func _coletar_dados_lobby(lobby_id: int):
+	if _search_emitted_list:
+		return
 	var name = Steam.getLobbyData(lobby_id, "lobby_name")
 	var player_count = Steam.getNumLobbyMembers(lobby_id)
 	var max_players = Steam.getLobbyMemberLimit(lobby_id)
@@ -272,15 +283,38 @@ func _on_lobby_match_list(lobby_list: Array):
 	logger.info("SteamManager", "Callback lobby_match_list: %s lobbies found" % lobby_list.size())
 	_search_lobby_ids.clear()
 	_search_lobby_data.clear()
+	_search_emitted_list = false
+	_search_start_time = Time.get_ticks_msec() / 1000.0
 	for id in lobby_list:
 		_search_lobby_ids.append(id)
 		Steam.requestLobbyData(id)
 	logger.info("SteamManager", "requestLobbyData called for %s lobbies, waiting for data..." % _search_lobby_ids.size())
-	get_tree().create_timer(3.0).timeout.connect(_emit_lobby_list)
+	if not _search_lobby_ids.is_empty():
+		get_tree().create_timer(0.5).timeout.connect(_on_search_poll)
+
+func _on_search_poll():
+	if _search_emitted_list:
+		return
+	var elapsed = (Time.get_ticks_msec() / 1000.0) - _search_start_time
+	for id in _search_lobby_ids:
+		if not _search_lobby_data.has(id):
+			var name = Steam.getLobbyData(id, "lobby_name")
+			if name:
+				_coletar_dados_lobby(id)
+	if _search_lobby_data.size() >= _search_lobby_ids.size():
+		logger.info("SteamManager", "Poll collected all data in %.1fs" % elapsed)
+		_emit_lobby_list()
+		return
+	if elapsed >= 10.0:
+		logger.warn("SteamManager", "Search timeout (%.1fs), emitting with %s/%s lobbies" % [elapsed, _search_lobby_data.size(), _search_lobby_ids.size()])
+		_emit_lobby_list()
+		return
+	get_tree().create_timer(0.5).timeout.connect(_on_search_poll)
 
 func _emit_lobby_list():
 	if _search_lobby_ids.is_empty():
 		return
+	_search_emitted_list = true
 	logger.info("SteamManager", "Emitting list with %s/%s lobbies with data" % [_search_lobby_data.size(), _search_lobby_ids.size()])
 	var lobbies: Array[Dictionary] = []
 	for id in _search_lobby_ids:

@@ -19,7 +19,7 @@ func _ready():
 	filter_distance.add_item(tr("FILTER_DEFAULT"), Steam.LOBBY_DISTANCE_FILTER_DEFAULT)
 	filter_distance.add_item(tr("FILTER_FAR"), Steam.LOBBY_DISTANCE_FILTER_FAR)
 	filter_distance.add_item(tr("FILTER_WORLDWIDE"), Steam.LOBBY_DISTANCE_FILTER_WORLDWIDE)
-	filter_distance.select(1)
+	filter_distance.select(3)
 	lobby_list.item_selected.connect(_on_lobby_selected)
 	lobby_list.empty_clicked.connect(_on_lobby_deselected)
 	steam_manager.lobby_list_received.connect(_on_lobby_list)
