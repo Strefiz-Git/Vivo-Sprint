@@ -154,28 +154,30 @@ func _on_server_disconnected():
 
 # --- Scene Sync (host -> all clients) ---
 
-func host_announce_map(map_path: String) -> void:
+func host_announce_track(track_path: String) -> void:
 	if not is_server:
 		return
-	steam_manager.set_lobby_data("selected_map", map_path)
-	_notify_map_selected.rpc(map_path)
+	steam_manager.set_lobby_data("selected_track", track_path)
+	_notify_track_selected.rpc(track_path)
 
 @rpc("authority", "call_local", "reliable")
-func _notify_map_selected(map_path: String) -> void:
-	get_tree().call_group("map_preview_listeners", "on_map_selected", map_path)
+func _notify_track_selected(track_path: String) -> void:
+	get_tree().call_group("track_preview_listeners", "on_track_selected", track_path)
 
-func host_start_game() -> void:
+func host_start_race(track_path: String = "") -> void:
 	if not is_server:
 		return
-	var map_path: String = steam_manager.get_lobby_data("selected_map")
-	if map_path.is_empty():
-		logger.warn("NetworkManager", "host_start_game: no map selected")
+	var path: String = track_path
+	if path.is_empty():
+		path = steam_manager.get_lobby_data("selected_track")
+	if path.is_empty():
+		logger.warn("NetworkManager", "host_start_race: no track selected")
 		return
-	_change_scene_for_all.rpc(map_path)
+	_change_track_for_all.rpc(path)
 
 @rpc("authority", "call_local", "reliable")
-func _change_scene_for_all(map_path: String) -> void:
-	get_tree().change_scene_to_file(map_path)
+func _change_track_for_all(track_path: String) -> void:
+	get_tree().change_scene_to_file(track_path)
 	await get_tree().process_frame
 	_request_spawn_on_server.rpc_id(1)
 

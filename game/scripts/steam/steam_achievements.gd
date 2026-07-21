@@ -1,6 +1,8 @@
 extends Node
 
 const STAT_PLAYTIME_SECONDS: String = "total_playtime_seconds"
+const STAT_RACES_WON: String = "races_won"
+const STAT_RACES_FINISHED: String = "races_finished"
 
 var _session_start_time: float = 0.0
 var _pending_store: bool = false
@@ -80,6 +82,13 @@ func sync_stat_int(stat_name: String, local_value: int) -> int:
 	if local_value > steam_value:
 		set_stat_int(stat_name, local_value)
 		return local_value
+	return steam_value
+
+func sync_best_time_float(stat_name: String, local_time_seconds: float) -> float:
+	var steam_value: float = get_stat_float(stat_name)
+	if steam_value <= 0.0 or local_time_seconds < steam_value:
+		set_stat_float(stat_name, local_time_seconds)
+		return local_time_seconds
 	return steam_value
 
 func store_stats() -> void:

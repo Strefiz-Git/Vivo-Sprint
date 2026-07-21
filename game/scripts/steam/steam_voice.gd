@@ -13,9 +13,9 @@ func _ready() -> void:
 	if steam_manager.initialized:
 		current_sample_rate = Steam.getVoiceOptimalSampleRate()
 
-# --- Voice Node Registration (proximity chat) ---
+# --- Voice Node Registration (global chat) ---
 
-func register_player_voice_node(peer_id: int, voice_player: AudioStreamPlayer3D) -> void:
+func register_player_voice_node(peer_id: int, voice_player: AudioStreamPlayer) -> void:
 	if not voice_player.stream:
 		voice_player.stream = AudioStreamGenerator.new()
 		voice_player.stream.mix_rate = current_sample_rate
