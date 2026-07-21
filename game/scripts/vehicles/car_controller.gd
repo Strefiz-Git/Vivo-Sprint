@@ -8,9 +8,9 @@ var _previous_transform: Transform3D
 var _time_since_update: float = 0.0
 
 var _config: Dictionary = {}
-var _engine_force_max: float = 600.0
-var _brake_force_max: float = 60.0
-var _reverse_force_max: float = 250.0
+var _engine_force_max: float = 1500.0
+var _brake_force_max: float = 80.0
+var _reverse_force_max: float = 600.0
 var _steer_max: float = 0.6
 var _current_gear: int = 0
 var _gear_ratios: Array = []
@@ -102,13 +102,13 @@ func _process_local_driving(delta: float) -> void:
 	var effective_brake: float = _brake_force_max
 
 	if throttle_input > 0.0:
-		engine_force = throttle_input * effective_engine
+		engine_force = -throttle_input * effective_engine
 		brake = 0.0
 	elif brake_input > 0.0 and moving_forward:
 		engine_force = 0.0
 		brake = brake_input * effective_brake
 	elif brake_input > 0.0:
-		engine_force = -brake_input * _reverse_force_max
+		engine_force = brake_input * _reverse_force_max
 		brake = 0.0
 	else:
 		engine_force = 0.0

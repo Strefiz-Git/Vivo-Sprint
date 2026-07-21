@@ -2,13 +2,13 @@
 	"name": "Carro Base",
 	"description": "Carro equilibrado para iniciantes",
 	"physics": {
-		"engine_force_max": 600.0,
-		"brake_force_max": 60.0,
-		"reverse_force_max": 250.0,
+		"engine_force_max": 1500.0,
+		"brake_force_max": 80.0,
+		"reverse_force_max": 600.0,
 		"steer_max": 0.6,
 		"steer_speed": 3.0,
 		"mass": 1200.0,
-		"centre_of_gravity": [0.0, -0.4, 0.0],
+		"centre_of_gravity": [0.0, -0.1, 0.0],
 		"gravity_scale": 1.0
 	},
 	"downforce": {
