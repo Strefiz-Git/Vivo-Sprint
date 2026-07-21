@@ -30,17 +30,15 @@ func _discover_checkpoints() -> void:
 
 
 func _on_checkpoint_entered(body: Node, sector_index: int) -> void:
-	if not multiplayer.is_server():
-		return
 	if not body.is_in_group("race_car"):
+		return
+	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
 		return
 	var car_id: int = body.get_multiplayer_authority()
 	race_manager.report_checkpoint_crossed(car_id, sector_index)
 
 
 func start_race(laps: int = -1) -> void:
-	if not multiplayer.is_server():
-		return
 	var laps_to_use: int = default_laps if laps < 0 else laps
 	for car in get_tree().get_nodes_in_group("race_car"):
 		race_manager.register_car(car.get_multiplayer_authority())

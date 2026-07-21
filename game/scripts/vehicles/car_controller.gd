@@ -148,5 +148,8 @@ func get_config() -> Dictionary:
 
 func _update_hud() -> void:
 	var hud: CanvasLayer = get_tree().get_first_node_in_group("race_hud")
-	if hud and hud.has_method("update_speed"):
-		hud.update_speed(get_speed_kmh())
+	if hud:
+		if hud.has_method("update_speed_mps"):
+			hud.update_speed_mps(linear_velocity.length())
+		elif hud.has_method("update_speed"):
+			hud.update_speed(get_speed_kmh())

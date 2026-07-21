@@ -9,6 +9,7 @@ const CAR_SCENE: PackedScene = preload("res://scenes/vehicles/base_car.tscn")
 func _ready() -> void:
 	logger.info("RaceScene", "Race scene loaded, spawning cars...")
 	_spawn_player_car()
+	_register_and_start()
 
 
 func _spawn_player_car() -> void:
@@ -16,7 +17,6 @@ func _spawn_player_car() -> void:
 	var peer_id: int = multiplayer.get_unique_id()
 	car.name = str(peer_id)
 	players_node.add_child(car, true)
-
 	car.set_multiplayer_authority(peer_id)
 
 	var track_node: Node3D = get_node_or_null("TestTrack")
@@ -26,10 +26,17 @@ func _spawn_player_car() -> void:
 		car.global_transform = start_xform
 		car.linear_velocity = Vector3.ZERO
 		car.angular_velocity = Vector3.ZERO
-		logger.info("RaceScene", "Car spawned at grid %d for peer %d (authority=%d)" % [grid_index, peer_id, car.get_multiplayer_authority()])
+		logger.info("RaceScene", "Car spawned at grid %d for peer %d" % [grid_index, peer_id])
 	else:
-		logger.warn("RaceScene", "Track not found or no get_start_position!")
 		car.global_position = Vector3(0, 2, 0)
+
+
+func _register_and_start() -> void:
+	await get_tree().create_timer(0.5).timeout
+	for car in get_tree().get_nodes_in_group("race_car"):
+		var car_id: int = car.get_multiplayer_authority()
+		race_manager.register_car(car_id)
+	race_manager.start_race(3)
 
 
 func _get_grid_index() -> int:

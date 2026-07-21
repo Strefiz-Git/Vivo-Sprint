@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" path="res://scenes/tracks/test_track.tscn" id="1"]
 [ext_resource type="Script" path="res://scripts/race/race_scene.gd" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/ui/race_hud.tscn" id="3"]
 
 [node name="RaceScene" type="Node3D"]
 script = ExtResource("2")
@@ -9,3 +10,5 @@ script = ExtResource("2")
 [node name="TestTrack" parent="." instance=ExtResource("1")]
 
 [node name="Players" type="Node3D" parent="."]
+
+[node name="RaceHUD" parent="." instance=ExtResource("3")]

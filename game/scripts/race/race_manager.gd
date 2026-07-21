@@ -41,8 +41,12 @@ func _new_progress_entry() -> Dictionary:
 	}
 
 
+func _is_authority() -> bool:
+	return not multiplayer.has_multiplayer_peer() or multiplayer.is_server()
+
+
 func start_race(laps: int = 3) -> void:
-	if not multiplayer.is_server():
+	if not _is_authority():
 		return
 	total_laps = laps
 	race_active = false
@@ -54,10 +58,24 @@ func start_race(laps: int = 3) -> void:
 
 func _run_countdown() -> void:
 	for seconds_left in [3, 2, 1]:
-		_broadcast_countdown.rpc(seconds_left)
+		_broadcast_countdown_local(seconds_left)
 		await get_tree().create_timer(1.0).timeout
-	_broadcast_countdown.rpc(0)
-	_begin_timing.rpc()
+	_broadcast_countdown_local(0)
+	_begin_timing_local()
+
+
+func _broadcast_countdown_local(seconds_left: int) -> void:
+	if multiplayer.has_multiplayer_peer():
+		_broadcast_countdown.rpc(seconds_left)
+	else:
+		_broadcast_countdown_call(seconds_left)
+
+
+func _begin_timing_local() -> void:
+	if multiplayer.has_multiplayer_peer():
+		_begin_timing.rpc()
+	else:
+		_begin_timing_call()
 
 
 @rpc("authority", "call_local", "reliable")
@@ -65,8 +83,16 @@ func _broadcast_countdown(seconds_left: int) -> void:
 	race_countdown_tick.emit(seconds_left)
 
 
+func _broadcast_countdown_call(seconds_left: int) -> void:
+	race_countdown_tick.emit(seconds_left)
+
+
 @rpc("authority", "call_local", "reliable")
 func _begin_timing() -> void:
+	_begin_timing_call()
+
+
+func _begin_timing_call() -> void:
 	race_active = true
 	var now: int = Time.get_ticks_msec()
 	for car_id in _progress.keys():
@@ -76,7 +102,7 @@ func _begin_timing() -> void:
 
 
 func report_checkpoint_crossed(car_id: int, sector_index: int) -> void:
-	if not multiplayer.is_server():
+	if not _is_authority():
 		return
 	if not race_active:
 		return
@@ -95,7 +121,7 @@ func report_checkpoint_crossed(car_id: int, sector_index: int) -> void:
 	p["sector_times"][sector_index] = sector_time
 	p["sector_start_ms"] = now
 
-	_notify_sector.rpc(car_id, sector_index, sector_time)
+	_notify_local(sector_time_recorded, [car_id, sector_index, sector_time])
 
 	if sector_index == SECTORS_PER_LAP - 1:
 		_complete_lap(car_id, p, now)
@@ -116,15 +142,42 @@ func _complete_lap(car_id: int, p: Dictionary, now: int) -> void:
 	p["next_sector"] = 0
 	p["lap_start_ms"] = now
 
-	_notify_lap.rpc(car_id, p["current_lap"], lap_time, is_best)
+	_notify_local(lap_completed, [car_id, p["current_lap"], lap_time, is_best])
 
 	if p["current_lap"] >= total_laps:
 		p["finished"] = true
 		_finish_order.append(car_id)
-		_notify_finish.rpc(car_id, _finish_order.size())
+		_notify_local(car_finished_race, [car_id, _finish_order.size()])
 
 		if _finish_order.size() == _progress.size():
-			_notify_race_finished.rpc(_finish_order)
+			_notify_local(race_finished.bind(), [_finish_order])
+			race_active = false
+			race_finished.emit(_finish_order)
+
+
+func _notify_local(sig: Signal, args: Array) -> void:
+	if multiplayer.has_multiplayer_peer():
+		match args.size():
+			0: pass
+			1: sig.emit(args[0])
+			2: sig.emit(args[0], args[1])
+			3: sig.emit(args[0], args[1], args[2])
+			4: sig.emit(args[0], args[1], args[2], args[3])
+	else:
+		match args.size():
+			0: pass
+			1: sig.emit(args[0])
+			2: sig.emit(args[0], args[1])
+			3: sig.emit(args[0], args[1], args[2])
+			4: sig.emit(args[0], args[1], args[2], args[3])
+
+
+func _broadcast_standings() -> void:
+	var s := get_standings()
+	if multiplayer.has_multiplayer_peer():
+		_sync_standings.rpc(s)
+	else:
+		standings_updated.emit(s)
 
 
 @rpc("authority", "call_local", "reliable")
