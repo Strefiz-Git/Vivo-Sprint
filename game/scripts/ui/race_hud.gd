@@ -22,6 +22,12 @@ var speedometer_enabled: bool = true
 var standings_enabled: bool = true
 var minimap_enabled: bool = true
 
+var _minimap_config_open: bool = false
+var _minimap_config_panel: PanelContainer = null
+var _minimap_size_slider: HSlider = null
+var _minimap_opacity_slider: HSlider = null
+var _minimap_zoom_slider: HSlider = null
+
 
 func _ready() -> void:
 	add_to_group("race_hud")
@@ -57,6 +63,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		standings_enabled = not standings_enabled
 		_apply_visibility()
 		_save_config()
+	elif event.is_action_pressed("hud_minimap_config"):
+		_toggle_minimap_config()
 
 
 func _update_local_car_reference() -> void:
@@ -161,6 +169,135 @@ func _on_car_finished(car_id: int, position: int) -> void:
 	if car_id == multiplayer.get_unique_id() and _countdown_label:
 		_countdown_label.visible = true
 		_countdown_label.text = "%dº Lugar!" % position
+
+
+func _toggle_minimap_config() -> void:
+	if _minimap_config_panel:
+		_minimap_config_open = not _minimap_config_open
+		_minimap_config_panel.visible = _minimap_config_open
+		if _minimap_config_open:
+			_sync_config_sliders()
+		return
+	_build_minimap_config_panel()
+	_minimap_config_open = true
+	_minimap_config_panel.visible = true
+	_sync_config_sliders()
+
+
+func _build_minimap_config_panel() -> void:
+	_minimap_config_panel = PanelContainer.new()
+	_minimap_config_panel.name = "MinimapConfig"
+	_minimap_config_panel.anchor_left = 0.5
+	_minimap_config_panel.anchor_right = 0.5
+	_minimap_config_panel.anchor_top = 0.5
+	_minimap_config_panel.anchor_bottom = 0.5
+	_minimap_config_panel.offset_left = -150.0
+	_minimap_config_panel.offset_top = -100.0
+	_minimap_config_panel.offset_right = 150.0
+	_minimap_config_panel.offset_bottom = 100.0
+	_minimap_config_panel.visible = false
+	_minimap_config_panel.z_index = 100
+	add_child(_minimap_config_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	_minimap_config_panel.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	margin.add_child(vbox)
+
+	var title := Label.new()
+	title.text = "Minimap Config"
+	title.add_theme_font_size_override("font_size", 14)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var size_row := _create_slider_row("Size", 100.0, 300.0, 180.0)
+	_minimap_size_slider = size_row[1]
+	vbox.add_child(size_row[0])
+
+	var opacity_row := _create_slider_row("Opacity", 30.0, 100.0, 75.0)
+	_minimap_opacity_slider = opacity_row[1]
+	vbox.add_child(opacity_row[0])
+
+	var zoom_row := _create_slider_row("Zoom", 20.0, 120.0, 60.0)
+	_minimap_zoom_slider = zoom_row[1]
+	vbox.add_child(zoom_row[0])
+
+	_minimap_size_slider.value_changed.connect(_on_config_size_changed)
+	_minimap_opacity_slider.value_changed.connect(_on_config_opacity_changed)
+	_minimap_zoom_slider.value_changed.connect(_on_config_zoom_changed)
+
+	var close_btn := Button.new()
+	close_btn.text = "Close"
+	close_btn.pressed.connect(_on_config_close)
+	vbox.add_child(close_btn)
+
+
+func _create_slider_row(label_text: String, min_val: float, max_val: float, default_val: float) -> Array:
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 8)
+
+	var label := Label.new()
+	label.text = label_text
+	label.add_theme_font_size_override("font_size", 12)
+	label.custom_minimum_size.x = 60.0
+	hbox.add_child(label)
+
+	var slider := HSlider.new()
+	slider.min_value = min_val
+	slider.max_value = max_val
+	slider.value = default_val
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.step = 1.0
+	hbox.add_child(slider)
+
+	var value_label := Label.new()
+	value_label.text = str(int(default_val))
+	value_label.add_theme_font_size_override("font_size", 11)
+	value_label.custom_minimum_size.x = 30.0
+	hbox.add_child(value_label)
+
+	slider.value_changed.connect(func(val: float) -> void: value_label.text = str(int(val)))
+
+	return [hbox, slider]
+
+
+func _sync_config_sliders() -> void:
+	if _minimap_size_slider and _minimap:
+		_minimap_size_slider.value = _minimap.mini_size.x
+	if _minimap_opacity_slider and _minimap:
+		_minimap_opacity_slider.value = _minimap.minimap_opacity * 100.0
+	if _minimap_zoom_slider and _minimap:
+		_minimap_zoom_slider.value = _minimap.get_zoom_value()
+
+
+func _on_config_size_changed(value: float) -> void:
+	if _minimap:
+		_minimap.set_minimap_size(value)
+	_save_config()
+
+
+func _on_config_opacity_changed(value: float) -> void:
+	if _minimap:
+		_minimap.set_opacity(value / 100.0)
+	_save_config()
+
+
+func _on_config_zoom_changed(value: float) -> void:
+	if _minimap:
+		_minimap.set_zoom_value(value)
+	_save_config()
+
+
+func _on_config_close() -> void:
+	_minimap_config_open = false
+	if _minimap_config_panel:
+		_minimap_config_panel.visible = false
 
 
 func _build_ui() -> void:
@@ -335,6 +472,13 @@ func _load_config() -> void:
 	minimap_enabled = cfg.get_value("hud", "minimap", true)
 	_minimap_mode = cfg.get_value("hud", "minimap_mode", 0)
 	units_manager.current_system = cfg.get_value("hud", "unit_system", 0)
+	var minimap_size_val: float = cfg.get_value("hud", "minimap_size", 180.0)
+	var minimap_opacity_val: float = cfg.get_value("hud", "minimap_opacity", 0.75)
+	var minimap_zoom_val: float = cfg.get_value("hud", "minimap_zoom", 60.0)
+	if _minimap:
+		_minimap.set_minimap_size(minimap_size_val)
+		_minimap.set_opacity(minimap_opacity_val)
+		_minimap.set_zoom_value(minimap_zoom_val)
 
 
 func _save_config() -> void:
@@ -344,4 +488,8 @@ func _save_config() -> void:
 	cfg.set_value("hud", "minimap", minimap_enabled)
 	cfg.set_value("hud", "minimap_mode", _minimap_mode)
 	cfg.set_value("hud", "unit_system", units_manager.current_system)
+	if _minimap:
+		cfg.set_value("hud", "minimap_size", _minimap.mini_size.x)
+		cfg.set_value("hud", "minimap_opacity", _minimap.minimap_opacity)
+		cfg.set_value("hud", "minimap_zoom", _minimap.get_zoom_value())
 	cfg.save(HUD_CONFIG_PATH)

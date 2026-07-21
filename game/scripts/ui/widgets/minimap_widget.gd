@@ -3,6 +3,7 @@ extends Control
 @export var mini_size: Vector2 = Vector2(180, 180)
 @export var full_size: Vector2 = Vector2(0, 0)
 @export var zoom: float = 0.15
+@export var minimap_opacity: float = 0.75
 
 var _viewport: SubViewport
 var _camera: Camera3D
@@ -11,10 +12,17 @@ var _track_node: Node3D = null
 var _car_nodes: Array[Node3D] = []
 var _player_car: Node3D = null
 
-const MINI_BG_COLOR: Color = Color(0.05, 0.08, 0.15, 0.75)
-const PLAYER_DOT_COLOR: Color = Color(0.1, 0.8, 0.2)
-const BOT_DOT_COLOR: Color = Color(0.9, 0.3, 0.1)
+var _zoom_min: float = 20.0
+var _zoom_max: float = 120.0
+var _zoom_step: float = 5.0
+
+const BG_COLOR: Color = Color(0.05, 0.08, 0.15, 0.75)
+const PLAYER_COLOR: Color = Color(0.1, 0.8, 0.2)
+const BOT_COLOR: Color = Color(0.9, 0.3, 0.1)
 const CHECKPOINT_COLOR: Color = Color(0.2, 0.6, 1.0, 0.8)
+const TRACK_COLOR: Color = Color(0.4, 0.4, 0.5, 0.6)
+const CARDINAL_COLOR: Color = Color(0.6, 0.6, 0.7, 0.8)
+const CARDINAL_NORTH_COLOR: Color = Color(1.0, 0.85, 0.2, 1.0)
 
 
 func _ready() -> void:
@@ -32,6 +40,24 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mb: InputEventMouseButton = event
+		if mb.pressed:
+			if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_zoom_camera(-_zoom_step)
+				get_viewport().set_input_as_handled()
+			elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_zoom_camera(_zoom_step)
+				get_viewport().set_input_as_handled()
+
+
+func _zoom_camera(delta_zoom: float) -> void:
+	if not _camera:
+		return
+	_camera.size = clampf(_camera.size + delta_zoom, _zoom_min, _zoom_max)
+
+
 func set_mode(mini: bool) -> void:
 	_is_mini = mini
 	_apply_mode()
@@ -44,6 +70,26 @@ func toggle_mode() -> void:
 
 func is_mini() -> bool:
 	return _is_mini
+
+
+func set_minimap_size(new_size: float) -> void:
+	mini_size = Vector2(new_size, new_size)
+	if _is_mini:
+		_apply_mode()
+
+
+func set_opacity(new_opacity: float) -> void:
+	minimap_opacity = clampf(new_opacity, 0.3, 1.0)
+	queue_redraw()
+
+
+func set_zoom_value(new_zoom: float) -> void:
+	if _camera:
+		_camera.size = clampf(new_zoom, _zoom_min, _zoom_max)
+
+
+func get_zoom_value() -> float:
+	return _camera.size if _camera else 60.0
 
 
 func _apply_mode() -> void:
@@ -122,7 +168,7 @@ func _spawn_track_outline() -> void:
 		var line := Line2D.new()
 		line.name = "TrackLine"
 		line.width = 3.0
-		line.default_color = Color(0.4, 0.4, 0.5, 0.6)
+		line.default_color = TRACK_COLOR
 		line.points = points_2d
 		line.closed = true
 		_viewport.add_child(line)
@@ -163,36 +209,131 @@ func _add_mesh_outline(mesh_instance: MeshInstance3D) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, custom_minimum_size), MINI_BG_COLOR, true)
+	var rect := Rect2(Vector2.ZERO, custom_minimum_size)
+	draw_rect(rect, Color(BG_COLOR.r, BG_COLOR.g, BG_COLOR.b, BG_COLOR.a * minimap_opacity), true)
+
+	draw_cardinal_directions()
+
+	if _camera and _player_car and is_instance_valid(_player_car):
+		_draw_player_arrow()
+		_draw_bot_markers()
+		_draw_offscreen_markers()
 
 
-func _process_car_dots() -> void:
-	if not _viewport or not _player_car:
-		return
-	for child in _viewport.get_children():
-		if child is Polygon2D or child is ColorRect:
-			if child.name.begins_with("CarDot"):
-				child.queue_free()
-	var player_pos: Vector3 = _player_car.global_position
-	var cam_pos: Vector3 = _camera.global_position if _camera else Vector3.ZERO
-	var view_half: float = _camera.size * 0.5 if _camera else 30.0
+func draw_cardinal_directions() -> void:
 	var vp_size: Vector2 = custom_minimum_size
+	var font := ThemeDB.fallback_font
+	var font_size: int = 10
+	var label_offset: float = 4.0
+
+	var north_pos := Vector2(vp_size.x * 0.5, label_offset)
+	draw_string(font, north_pos, "N", HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, CARDINAL_NORTH_COLOR)
+
+	var south_pos := Vector2(vp_size.x * 0.5, vp_size.y - label_offset - font_size)
+	draw_string(font, south_pos, "S", HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, CARDINAL_COLOR)
+
+	var west_pos := Vector2(label_offset, vp_size.y * 0.5 - font_size * 0.5)
+	draw_string(font, west_pos, "W", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, CARDINAL_COLOR)
+
+	var east_pos := Vector2(vp_size.x - label_offset - font_size * 0.5, vp_size.y * 0.5 - font_size * 0.5)
+	draw_string(font, east_pos, "E", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, CARDINAL_COLOR)
+
+
+func _draw_player_arrow() -> void:
+	if not _player_car or not is_instance_valid(_player_car):
+		return
+
+	var vp_size: Vector2 = custom_minimum_size
+	var center := vp_size * 0.5
+
+	var car_fwd: Vector3 = -_player_car.global_transform.basis.z
+	var angle_2d: float = atan2(car_fwd.x, car_fwd.z)
+
+	var arrow_size: float = 12.0
+	var tip := center + Vector2(sin(angle_2d), -cos(angle_2d)) * arrow_size
+	var left := center + Vector2(sin(angle_2d + 2.5), -cos(angle_2d + 2.5)) * arrow_size * 0.6
+	var right := center + Vector2(sin(angle_2d - 2.5), -cos(angle_2d - 2.5)) * arrow_size * 0.6
+
+	var shadow_offset := Vector2(1.5, 1.5)
+	draw_colored_polygon(
+		PackedVector2Array([tip + shadow_offset, left + shadow_offset, right + shadow_offset]),
+		Color(0, 0, 0, 0.4)
+	)
+
+	draw_colored_polygon(
+		PackedVector2Array([tip, left, right]),
+		PLAYER_COLOR
+	)
+
+	draw_circle(center, 3.0, Color(1, 1, 1, 0.8))
+
+
+func _draw_bot_markers() -> void:
+	if not _camera or not _player_car:
+		return
+
+	var vp_size: Vector2 = custom_minimum_size
+	var cam_pos: Vector3 = _camera.global_position
+	var view_half: float = _camera.size * 0.5
+
 	for car in _car_nodes:
-		var dot := Polygon2D.new()
-		dot.name = "CarDot_%s" % car.name
+		if car == _player_car:
+			continue
+		if not is_instance_valid(car):
+			continue
+
 		var rel: Vector3 = car.global_position - cam_pos
-		var dot_x: float = (rel.x / view_half) * (vp_size.x * 0.5) + vp_size.x * 0.5
-		var dot_y: float = (rel.z / view_half) * (vp_size.y * 0.5) + vp_size.y * 0.5
-		var is_player: bool = (car == _player_car)
-		dot.color = PLAYER_DOT_COLOR if is_player else BOT_DOT_COLOR
-		var circle_points: PackedVector2Array = PackedVector2Array()
-		var radius: float = 6.0 if is_player else 4.0
-		for i in range(16):
-			var angle: float = TAU * i / 16.0
-			circle_points.append(Vector2(dot_x, dot_y) + Vector2(cos(angle), sin(angle)) * radius)
-		dot.polygon = circle_points
-		_viewport.add_child(dot)
+		var screen_x: float = (rel.x / view_half) * (vp_size.x * 0.5) + vp_size.x * 0.5
+		var screen_y: float = (rel.z / view_half) * (vp_size.y * 0.5) + vp_size.y * 0.5
+
+		var in_bounds: bool = (screen_x >= 0 and screen_x <= vp_size.x and screen_y >= 0 and screen_y <= vp_size.y)
+		if not in_bounds:
+			continue
+
+		var dot_pos := Vector2(screen_x, screen_y)
+		draw_circle(dot_pos, 4.0, BOT_COLOR)
+		draw_circle(dot_pos, 2.0, Color(1, 1, 1, 0.6))
 
 
-func _physics_process(_delta: float) -> void:
-	_process_car_dots()
+func _draw_offscreen_markers() -> void:
+	if not _camera or not _player_car:
+		return
+
+	var vp_size: Vector2 = custom_minimum_size
+	var center := vp_size * 0.5
+	var cam_pos: Vector3 = _camera.global_position
+	var view_half: float = _camera.size * 0.5
+	var margin: float = 12.0
+
+	for car in _car_nodes:
+		if car == _player_car:
+			continue
+		if not is_instance_valid(car):
+			continue
+
+		var rel: Vector3 = car.global_position - cam_pos
+		var screen_x: float = (rel.x / view_half) * (vp_size.x * 0.5) + vp_size.x * 0.5
+		var screen_y: float = (rel.z / view_half) * (vp_size.y * 0.5) + vp_size.y * 0.5
+
+		var in_bounds: bool = (screen_x >= 0 and screen_x <= vp_size.x and screen_y >= 0 and screen_y <= vp_size.y)
+		if in_bounds:
+			continue
+
+		var to_car: Vector2 = Vector2(screen_x, screen_y) - center
+		if to_car.length() < 0.001:
+			continue
+		var dir: Vector2 = to_car.normalized()
+
+		var clamped_pos := center + dir * (min(vp_size.x, vp_size.y) * 0.5 - margin)
+
+		draw_circle(clamped_pos, 5.0, Color(BOT_COLOR.r, BOT_COLOR.g, BOT_COLOR.b, 0.5))
+		draw_circle(clamped_pos, 3.0, Color(1, 1, 1, 0.3))
+
+		var arrow_tip := clamped_pos + dir * 6.0
+		var perp := Vector2(-dir.y, dir.x)
+		var arrow_left := clamped_pos - dir * 3.0 + perp * 3.0
+		var arrow_right := clamped_pos - dir * 3.0 - perp * 3.0
+		draw_colored_polygon(
+			PackedVector2Array([arrow_tip, arrow_left, arrow_right]),
+			Color(BOT_COLOR.r, BOT_COLOR.g, BOT_COLOR.b, 0.5)
+		)
