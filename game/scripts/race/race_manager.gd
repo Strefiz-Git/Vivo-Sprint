@@ -149,10 +149,9 @@ func _complete_lap(car_id: int, p: Dictionary, now: int) -> void:
 		_finish_order.append(car_id)
 		_notify_local(car_finished_race, [car_id, _finish_order.size()])
 
-		if _finish_order.size() == _progress.size():
-			_notify_local(race_finished.bind(), [_finish_order])
-			race_active = false
-			race_finished.emit(_finish_order)
+	if _finish_order.size() == _progress.size():
+		race_active = false
+		race_finished.emit(_finish_order)
 
 
 func _notify_local(sig: Signal, args: Array) -> void:
@@ -199,10 +198,6 @@ func _notify_finish(car_id: int, position: int) -> void:
 func _notify_race_finished(finishing_order: Array) -> void:
 	race_active = false
 	race_finished.emit(finishing_order)
-
-
-func _broadcast_standings() -> void:
-	_sync_standings.rpc(get_standings())
 
 
 @rpc("authority", "call_local", "reliable")

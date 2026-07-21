@@ -15,6 +15,8 @@ var _steer_max: float = 0.6
 var _current_gear: int = 0
 var _gear_ratios: Array = []
 var _final_drive: float = 3.8
+var _damage_total: float = 0.0
+var _fuel_litres: float = 60.0
 
 
 func _enter_tree() -> void:
@@ -76,7 +78,8 @@ func _apply_config() -> void:
 
 func _physics_process(delta: float) -> void:
 	if _is_local():
-		_process_local_driving(delta)
+		if race_manager.race_active:
+			_process_local_driving(delta)
 		_update_hud()
 	else:
 		_interpolate_remote_transform(delta)

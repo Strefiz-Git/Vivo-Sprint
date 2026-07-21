@@ -324,7 +324,8 @@ func _draw_offscreen_markers() -> void:
 			continue
 		var dir: Vector2 = to_car.normalized()
 
-		var clamped_pos := center + dir * (min(vp_size.x, vp_size.y) * 0.5 - margin)
+		var min_dim: float = minf(vp_size.x, vp_size.y)
+		var clamped_pos: Vector2 = center + dir * (min_dim * 0.5 - margin)
 
 		draw_circle(clamped_pos, 5.0, Color(BOT_COLOR.r, BOT_COLOR.g, BOT_COLOR.b, 0.5))
 		draw_circle(clamped_pos, 3.0, Color(1, 1, 1, 0.3))
