@@ -16,6 +16,10 @@ func _apply_texts():
 	$VBoxContainer/btn_settings.text = tr("MENU_SETTINGS")
 	$VBoxContainer/btn_quit.text = tr("MENU_QUIT")
 
+func _on_singleplayer_pressed():
+	logger.info("MainMenu", "Singleplayer -> race scene")
+	get_tree().change_scene_to_file("res://scenes/race/race_scene.tscn")
+
 func _on_multiplayer_pressed():
 	logger.info("MainMenu", "Multiplayer -> lobby browser")
 	scene_manager.goto_scene("res://scenes/ui/lobby_browser.tscn")

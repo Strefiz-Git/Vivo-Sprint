@@ -18,16 +18,28 @@ var _final_drive: float = 3.8
 
 
 func _enter_tree() -> void:
-	set_multiplayer_authority(int(str(name)))
+	if multiplayer.has_multiplayer_peer():
+		var name_int: int = name.to_int() if name.is_valid_int() else 0
+		if name_int != 0:
+			set_multiplayer_authority(name_int)
+	else:
+		set_multiplayer_authority(1)
+
+
+func _is_local() -> bool:
+	return not multiplayer.has_multiplayer_peer() or is_multiplayer_authority()
 
 
 func _ready() -> void:
 	add_to_group("race_car")
 	_target_transform = global_transform
 	_previous_transform = global_transform
-	if is_multiplayer_authority():
-		$SpringArm3D/Camera3D.current = true
 	_load_config()
+	if _is_local():
+		$SpringArm3D/Camera3D.current = true
+		logger.info("CarController", "Local car active — peer %d" % multiplayer.get_unique_id())
+	else:
+		logger.warn("CarController", "Remote car — peer %d, authority=%s" % [multiplayer.get_unique_id(), get_multiplayer_authority()])
 
 
 func _load_config() -> void:
@@ -63,17 +75,26 @@ func _apply_config() -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if is_multiplayer_authority():
+	if _is_local():
 		_process_local_driving(delta)
 		_update_hud()
 	else:
 		_interpolate_remote_transform(delta)
 
 
+var _input_debug_timer: float = 0.0
+
+
 func _process_local_driving(delta: float) -> void:
 	var throttle_input: float = Input.get_action_strength("accelerate")
 	var brake_input: float = Input.get_action_strength("brake")
 	var steer_input: float = Input.get_axis("steer_left", "steer_right")
+
+	_input_debug_timer += delta
+	if _input_debug_timer >= 1.0:
+		_input_debug_timer = 0.0
+		logger.info("CarController", "throttle=%.2f brake=%.2f steer=%.2f vel=%.1f pos=%s" % [
+			throttle_input, brake_input, steer_input, get_speed_kmh(), global_position])
 
 	var moving_forward: bool = linear_velocity.dot(-global_transform.basis.z) > 0.5
 

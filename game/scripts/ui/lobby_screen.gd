@@ -302,7 +302,7 @@ func _enviar_iniciar_corrida():
 		ready_btn.disabled = true
 	start_btn.disabled = true
 	logger.info("LobbyScreen", "Loading race scene...")
-	scene_manager.goto_scene("res://scenes/race/race_scene.tscn", scene_manager.TransitionType.FADE_BLACK)
+	get_tree().change_scene_to_file("res://scenes/race/race_scene.tscn")
 
 func _on_invite_pressed():
 	logger.info("LobbyScreen", "Opening Steam invite overlay")
