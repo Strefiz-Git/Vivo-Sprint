@@ -1,0 +1,44 @@
+{
+	"compounds": [
+		{
+			"id": "SOFT",
+			"name": "Soft",
+			"grip": 1.0,
+			"wear_rate": 1.5,
+			"temperature_window": [70.0, 95.0],
+			"conditions": ["DRY"]
+		},
+		{
+			"id": "MEDIUM",
+			"name": "Medium",
+			"grip": 0.85,
+			"wear_rate": 1.0,
+			"temperature_window": [75.0, 100.0],
+			"conditions": ["DRY"]
+		},
+		{
+			"id": "HARD",
+			"name": "Hard",
+			"grip": 0.7,
+			"wear_rate": 0.6,
+			"temperature_window": [80.0, 110.0],
+			"conditions": ["DRY"]
+		},
+		{
+			"id": "INTERMEDIATE",
+			"name": "Intermediate",
+			"grip": 0.55,
+			"wear_rate": 0.8,
+			"temperature_window": [50.0, 80.0],
+			"conditions": ["DAMP", "WET"]
+		},
+		{
+			"id": "FULL_WET",
+			"name": "Full Wet",
+			"grip": 0.4,
+			"wear_rate": 0.7,
+			"temperature_window": [40.0, 70.0],
+			"conditions": ["WET", "VERY_WET"]
+		}
+	]
+}

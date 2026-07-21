@@ -1,0 +1,113 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicles/car_controller.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/cars/vehicle-truck-yellow.glb" id="2"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_car"]
+size = Vector3(1.8, 0.8, 3.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wheel_fl"]
+size = Vector3(0.3, 0.3, 0.3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wheel_fr"]
+size = Vector3(0.3, 0.3, 0.3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wheel_rl"]
+size = Vector3(0.3, 0.3, 0.3)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wheel_rr"]
+size = Vector3(0.3, 0.3, 0.3)
+
+[node name="Car" type="VehicleBody3D"]
+script = ExtResource("1")
+collision_layer = 2
+collision_mask = 1
+mass = 1200.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, -0.4, 0)
+gravity_scale = 5.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_car")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+
+[node name="WheelFL" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, -0.3, 1.2)
+use_as_steering = true
+use_as_traction = false
+wheel_radius = 0.35
+wheel_friction_slip = 1.4
+suspension_stiffness = 120.0
+suspension_max_force = 6000.0
+suspension_travel = 0.15
+damping_compression = 0.5
+damping_relaxation = 0.88
+wheel_roll_influence = 0.01
+wheel_rest_length = 0.2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WheelFL"]
+shape = SubResource("BoxShape3D_wheel_fl")
+
+[node name="WheelFR" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, -0.3, 1.2)
+use_as_steering = true
+use_as_traction = false
+wheel_radius = 0.35
+wheel_friction_slip = 1.4
+suspension_stiffness = 120.0
+suspension_max_force = 6000.0
+suspension_travel = 0.15
+damping_compression = 0.5
+damping_relaxation = 0.88
+wheel_roll_influence = 0.01
+wheel_rest_length = 0.2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WheelFR"]
+shape = SubResource("BoxShape3D_wheel_fr")
+
+[node name="WheelRL" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, -0.3, -1.2)
+use_as_steering = false
+use_as_traction = true
+wheel_radius = 0.35
+wheel_friction_slip = 1.2
+suspension_stiffness = 80.0
+suspension_max_force = 6000.0
+suspension_travel = 0.15
+damping_compression = 0.5
+damping_relaxation = 0.88
+wheel_roll_influence = 0.01
+wheel_rest_length = 0.2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WheelRL"]
+shape = SubResource("BoxShape3D_wheel_rl")
+
+[node name="WheelRR" type="VehicleWheel3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, -0.3, -1.2)
+use_as_steering = false
+use_as_traction = true
+wheel_radius = 0.35
+wheel_friction_slip = 1.2
+suspension_stiffness = 80.0
+suspension_max_force = 6000.0
+suspension_travel = 0.15
+damping_compression = 0.5
+damping_relaxation = 0.88
+wheel_roll_influence = 0.01
+wheel_rest_length = 0.2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="WheelRR"]
+shape = SubResource("BoxShape3D_wheel_rr")
+
+[node name="Model" parent="." instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="SpringArm3D" type="SpringArm3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -5)
+spring_length = 5.0
+
+[node name="Camera3D" type="Camera3D" parent="SpringArm3D"]
+current = false
+fov = 70.0
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]

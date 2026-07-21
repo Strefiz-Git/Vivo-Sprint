@@ -1,0 +1,17 @@
+{
+	"name": "Pista Base",
+	"description": "Pista oval simples para testes",
+	"scene_path": "res://scenes/tracks/base_track.tscn",
+	"laps_default": 3,
+	"sectors": 3,
+	"length_km": 2.5,
+	"pit_lane": {
+		"has_pit_lane": false,
+		"speed_limit_kmh": 60
+	},
+	"weather_defaults": {
+		"weather": "DRY",
+		"time_of_day": 12.0
+	},
+	"grid_positions": 4
+}

@@ -1,15 +1,20 @@
 extends VehicleBody3D
 
-const ENGINE_FORCE_MAX: float = 600.0
-const BRAKE_FORCE_MAX: float = 60.0
-const REVERSE_FORCE_MAX: float = 250.0
-const STEER_MAX: float = 0.6
 const STEER_SPEED: float = 3.0
 const NETWORK_UPDATE_INTERVAL: float = 0.05
 
 var _target_transform: Transform3D
 var _previous_transform: Transform3D
 var _time_since_update: float = 0.0
+
+var _config: Dictionary = {}
+var _engine_force_max: float = 600.0
+var _brake_force_max: float = 60.0
+var _reverse_force_max: float = 250.0
+var _steer_max: float = 0.6
+var _current_gear: int = 0
+var _gear_ratios: Array = []
+var _final_drive: float = 3.8
 
 
 func _enter_tree() -> void:
@@ -22,37 +27,74 @@ func _ready() -> void:
 	_previous_transform = global_transform
 	if is_multiplayer_authority():
 		$SpringArm3D/Camera3D.current = true
+	_load_config()
+
+
+func _load_config() -> void:
+	var config_path: String = "res://config/cars/base_car.json"
+	if not FileAccess.file_exists(config_path):
+		logger.warning("CarController", "Config not found: %s" % config_path)
+		return
+	var file := FileAccess.open(config_path, FileAccess.READ)
+	if file:
+		var json := JSON.new()
+		var error := json.parse(file.get_as_text())
+		if error == OK:
+			_config = json.data
+			_apply_config()
+		else:
+			logger.error("CarController", "JSON parse error: %s" % json.get_error_message())
+
+
+func _apply_config() -> void:
+	if _config.has("physics"):
+		var physics: Dictionary = _config["physics"]
+		_engine_force_max = physics.get("engine_force_max", 600.0)
+		_brake_force_max = physics.get("brake_force_max", 60.0)
+		_reverse_force_max = physics.get("reverse_force_max", 250.0)
+		_steer_max = physics.get("steer_max", 0.6)
+		mass = physics.get("mass", 1200.0)
+		var cog: Array = physics.get("centre_of_gravity", [0.0, -0.3, 0.0])
+		center_of_mass = Vector3(cog[0], cog[1], cog[2])
+	if _config.has("gears"):
+		var gears: Dictionary = _config["gears"]
+		_gear_ratios = gears.get("ratios", [])
+		_final_drive = gears.get("final_drive", 3.8)
 
 
 func _physics_process(delta: float) -> void:
 	if is_multiplayer_authority():
 		_process_local_driving(delta)
+		_update_hud()
 	else:
 		_interpolate_remote_transform(delta)
 
 
-func _process_local_driving(_delta: float) -> void:
+func _process_local_driving(delta: float) -> void:
 	var throttle_input: float = Input.get_action_strength("accelerate")
 	var brake_input: float = Input.get_action_strength("brake")
 	var steer_input: float = Input.get_axis("steer_left", "steer_right")
 
 	var moving_forward: bool = linear_velocity.dot(-global_transform.basis.z) > 0.5
 
+	var effective_engine: float = _engine_force_max
+	var effective_brake: float = _brake_force_max
+
 	if throttle_input > 0.0:
-		engine_force = throttle_input * ENGINE_FORCE_MAX
+		engine_force = throttle_input * effective_engine
 		brake = 0.0
 	elif brake_input > 0.0 and moving_forward:
 		engine_force = 0.0
-		brake = brake_input * BRAKE_FORCE_MAX
+		brake = brake_input * effective_brake
 	elif brake_input > 0.0:
-		engine_force = -brake_input * REVERSE_FORCE_MAX
+		engine_force = -brake_input * _reverse_force_max
 		brake = 0.0
 	else:
 		engine_force = 0.0
 		brake = 0.0
 
-	var steer_target: float = -steer_input * STEER_MAX
-	steering = move_toward(steering, steer_target, STEER_SPEED * _delta)
+	var steer_target: float = -steer_input * _steer_max
+	steering = move_toward(steering, steer_target, STEER_SPEED * delta)
 
 
 func _interpolate_remote_transform(delta: float) -> void:
@@ -73,3 +115,17 @@ func teleport_to(new_transform: Transform3D) -> void:
 	angular_velocity = Vector3.ZERO
 	_target_transform = new_transform
 	_previous_transform = new_transform
+
+
+func get_speed_kmh() -> float:
+	return linear_velocity.length() * 3.6
+
+
+func get_config() -> Dictionary:
+	return _config
+
+
+func _update_hud() -> void:
+	var hud: CanvasLayer = get_tree().get_first_node_in_group("race_hud")
+	if hud and hud.has_method("update_speed"):
+		hud.update_speed(get_speed_kmh())

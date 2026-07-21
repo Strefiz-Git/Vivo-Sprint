@@ -1,0 +1,138 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/race/race_track.gd" id="1"]
+[ext_resource type="PackedScene" path="res://assets/tracks/track-straight.glb" id="2"]
+[ext_resource type="PackedScene" path="res://assets/tracks/track-corner.glb" id="3"]
+[ext_resource type="PackedScene" path="res://assets/tracks/track-finish.glb" id="4"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(200, 0.5, 200)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_checkpoint"]
+size = Vector3(12, 3, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall"]
+size = Vector3(200, 2, 200)
+
+[node name="TestTrack" type="Node3D"]
+script = ExtResource("1")
+default_laps = 3
+
+[node name="Ground" type="StaticBody3D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("BoxShape3D_ground")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
+
+[node name="GroundMesh" type="MeshInstance3D" parent="Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="TrackPieces" type="Node3D" parent="."]
+
+[node name="FinishLine" parent="TrackPieces" instance=ExtResource("4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Straight1" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+
+[node name="Straight2" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -20)
+
+[node name="Straight3" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -30)
+
+[node name="Corner1" parent="TrackPieces" instance=ExtResource("3")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -5, 0, -35)
+
+[node name="Straight4" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -10, 0, -30)
+
+[node name="Straight5" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -10, 0, -20)
+
+[node name="Straight6" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -10, 0, -10)
+
+[node name="Corner2" parent="TrackPieces" instance=ExtResource("3")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -5, 0, -5)
+
+[node name="Straight7" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 5)
+
+[node name="Straight8" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15)
+
+[node name="Straight9" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 25)
+
+[node name="Corner3" parent="TrackPieces" instance=ExtResource("3")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 5, 0, 30)
+
+[node name="Straight10" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 0, 25)
+
+[node name="Straight11" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 0, 15)
+
+[node name="Straight12" parent="TrackPieces" instance=ExtResource("2")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 10, 0, 5)
+
+[node name="Corner4" parent="TrackPieces" instance=ExtResource("3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 0)
+
+[node name="Checkpoints" type="Node3D" parent="."]
+
+[node name="Checkpoint1" type="Area3D" parent="Checkpoints"]
+collision_layer = 0
+collision_mask = 2
+monitoring = true
+monitorable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Checkpoints/Checkpoint1"]
+shape = SubResource("BoxShape3D_checkpoint")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -15)
+
+[node name="Checkpoint2" type="Area3D" parent="Checkpoints"]
+collision_layer = 0
+collision_mask = 2
+monitoring = true
+monitorable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Checkpoints/Checkpoint2"]
+shape = SubResource("BoxShape3D_checkpoint")
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, -10, 1.5, -20)
+
+[node name="Checkpoint3" type="Area3D" parent="Checkpoints"]
+collision_layer = 0
+collision_mask = 2
+monitoring = true
+monitorable = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Checkpoints/Checkpoint3"]
+shape = SubResource("BoxShape3D_checkpoint")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 20)
+
+[node name="GridPositions" type="Node3D" parent="."]
+
+[node name="Pos0" type="Marker3D" parent="GridPositions"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.5, 2)
+
+[node name="Pos1" type="Marker3D" parent="GridPositions"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.5, 2)
+
+[node name="Pos2" type="Marker3D" parent="GridPositions"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.5, 5)
+
+[node name="Pos3" type="Marker3D" parent="GridPositions"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.5, 5)
+
+[node name="RacingLine" type="Path3D" parent="."]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, -0.40558, 0.579228, 0, 0.819152, 0.573576, -0.707107, -0.40558, 0.579228, 0, 10, 0)
+shadow_enabled = true
+directional_shadow_max_distance = 50.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]

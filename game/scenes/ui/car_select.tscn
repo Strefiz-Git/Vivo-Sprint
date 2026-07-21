@@ -1,0 +1,79 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/car_select.gd" id="1"]
+
+[node name="CarSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 30.0
+offset_right = 150.0
+offset_bottom = 70.0
+horizontal_alignment = 1
+text = "Escolher Carro"
+
+[node name="CarList" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -400.0
+offset_top = -100.0
+offset_right = 400.0
+offset_bottom = 100.0
+alignment = 1
+
+[node name="PrevButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 50.0
+offset_top = 250.0
+offset_right = 150.0
+offset_bottom = 290.0
+text = "< Anterior"
+
+[node name="CarName" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 250.0
+offset_right = 150.0
+offset_bottom = 290.0
+horizontal_alignment = 1
+text = "Carro Base"
+
+[node name="NextButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -150.0
+offset_top = 250.0
+offset_right = -50.0
+offset_bottom = 290.0
+text = "Próximo >"
+
+[node name="ConfirmButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -100.0
+offset_top = -100.0
+offset_right = 100.0
+offset_bottom = -60.0
+text = "Confirmar"
