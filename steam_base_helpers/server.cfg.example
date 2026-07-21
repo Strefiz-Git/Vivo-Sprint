@@ -1,0 +1,13 @@
+; server.cfg
+; -----------------------------------------------------------------------
+; Renomeia este ficheiro para "server.cfg" e coloca-o ao lado do
+; executável do servidor dedicado. Edita os valores conforme quiseres.
+; -----------------------------------------------------------------------
+
+[server]
+name = "Servidor do Fulano"
+port = 27015
+max_players = 16
+password = ""
+map = "res://maps/floresta.tscn"
+public = true

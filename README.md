@@ -82,9 +82,12 @@ game/
 | `helpers.gd` | Funções utilitárias (formatação, math) |
 | `settings.gd` | Definições de áudio/vídeo/input |
 | `scene_manager.gd` | Transições entre cenas (goto_scene) |
-| `steam_manager.gd` | Wrapper Steamworks: lobbies, callbacks, chat |
-| `network_manager.gd` | ENetMultiplayerPeer (não integrado ainda) |
-| `resource_cache.gc` | Cache de recursos |
+| `steam_manager.gd` | Wrapper Steamworks: lobbies, callbacks, chat, friends, overlay |
+| `steam_achievements.gd` | Conquistas, estatísticas, contagem de horas de jogo |
+| `steam_voice.gd` | Chat de voz normal e chat de proximidade |
+| `network_manager.gd` | ENetMultiplayerPeer + Steam P2P, host migration, scene sync |
+| `locale_manager.gd` | Localização PT/EN |
+| `resource_cache.gd` | Cache de recursos |
 
 ## Steamworks — Lobbies
 
@@ -101,11 +104,37 @@ O sistema de lobbies está implementado e funcional:
 - `lobby_data_update` do Steam tem **3 parâmetros** `(lobby_id, member_id, success)` — sem key/value
 - O search chama `requestLobbyData()` por lobby e aguarda `lobby_data_update` (com fallback 3s)
 - Lobbies "Amigos" (Friends Only) **não aparecem** na pesquisa para quem não é amigo
-- `Steam.kickUserFromLobby()` não existe nesta build do GodotSteam — kick desativado
+- `Steam.kickUserFromLobby()` não existe nesta build do GodotSteam — kick feito via chat message
+
+### Friends & Overlay
+
+- `get_friends_list()` — lista de amigos {id, name}
+- `get_friend_lobbies()` — lobbies do jogo onde tens amigos
+- `open_friends_overlay()` / `open_profile_overlay()` / `send_friend_request()`
+- `open_invite_dialog()` — abre o overlay de convites da Steam
+
+### Achievements & Stats
+
+- `steam_achievements.gd` — `unlock_achievement()`, `set_stat_int()`, `sync_stat_int()`, contagem de horas
+- API Names das conquistas/stats têm de existir primeiro no painel Steamworks
+
+### Voice Chat
+
+- `steam_voice.gd` — chat de voz global e chat de proximidade (via AudioStreamPlayer3D)
+- Suporta push-to-talk ou voz sempre ativa
 
 ## Rede
 
-O `network_manager.gd` com ENetMultiplayerPeer existe mas **não está integrado** com o sistema de lobbies Steam. A comunicação entre jogadores dentro de um lobby será implementada usando `SteamNetworkingSockets` ou ENet sobre o P2P da Steam.
+O `network_manager.gd` suporta dois modos:
+- **ENet** (para testes locais, `start_server()` / `connect_to_server()`)
+- **Steam P2P** (`start_steam_host()` / `connect_to_steam()`) — integrado com lobbies
+
+Funcionalidades de rede:
+- **Host migration**: quando o host sai, o novo dono da lobby Steam assume automaticamente
+- **Scene sync**: o host pode anunciar o mapa e iniciar o jogo para todos (`host_announce_map()`, `host_start_game()`)
+- **Spawn/despawn**: sinais `player_spawn_requested` / `player_despawn_requested` para gerir jogadores
+
+O `dedicated_server.gd` e `server_config.gd` em `scripts/network/` são para builds de servidor dedicado headless (não são autoloads normais).
 
 ## PLAN.md
 

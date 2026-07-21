@@ -110,10 +110,13 @@ func is_multiplayer_active() -> bool:
 func _on_player_connected(id: int):
 	player_connected.emit(id)
 	logger.info("NetworkManager", "Player connected: %s" % id)
+	if is_server:
+		player_spawn_requested.emit(id)
 
 func _on_player_disconnected(id: int):
 	player_disconnected.emit(id)
 	logger.info("NetworkManager", "Player disconnected: %s" % id)
+	player_despawn_requested.emit(id)
 
 func _on_connected_to_server():
 	client_connected.emit()
@@ -122,9 +125,63 @@ func _on_connected_to_server():
 func _on_connection_failed():
 	client_disconnected.emit("Connection failed")
 
+func start_dedicated_server(port: int = DEFAULT_PORT):
+	start_server(port, MAX_PLAYERS)
+
+# --- Host Migration ---
+
+signal host_migration_started
+signal host_migration_finished(am_i_new_host: bool)
+signal player_spawn_requested(peer_id: int)
+signal player_despawn_requested(peer_id: int)
+
 func _on_server_disconnected():
 	client_disconnected.emit("Server disconnected")
 	is_client = false
+	host_migration_started.emit()
+	if not steam_manager.initialized:
+		logger.warn("NetworkManager", "Host migration: Steam not initialized, cannot migrate")
+		return
+	var new_owner_id: int = Steam.getLobbyOwner(steam_manager.lobby_id)
+	var i_am_new_host: bool = new_owner_id == steam_manager.steam_id
+	logger.info("NetworkManager", "Host migration: new owner=%s, i_am_new=%s" % [new_owner_id, i_am_new_host])
+	if i_am_new_host:
+		start_steam_host()
+	else:
+		await get_tree().create_timer(1.0).timeout
+		connect_to_steam(new_owner_id)
+	host_migration_finished.emit(i_am_new_host)
 
-func start_dedicated_server(port: int = DEFAULT_PORT):
-	start_server(port, MAX_PLAYERS)
+# --- Scene Sync (host -> all clients) ---
+
+func host_announce_map(map_path: String) -> void:
+	if not is_server:
+		return
+	steam_manager.set_lobby_data("selected_map", map_path)
+	_notify_map_selected.rpc(map_path)
+
+@rpc("authority", "call_local", "reliable")
+func _notify_map_selected(map_path: String) -> void:
+	get_tree().call_group("map_preview_listeners", "on_map_selected", map_path)
+
+func host_start_game() -> void:
+	if not is_server:
+		return
+	var map_path: String = steam_manager.get_lobby_data("selected_map")
+	if map_path.is_empty():
+		logger.warn("NetworkManager", "host_start_game: no map selected")
+		return
+	_change_scene_for_all.rpc(map_path)
+
+@rpc("authority", "call_local", "reliable")
+func _change_scene_for_all(map_path: String) -> void:
+	get_tree().change_scene_to_file(map_path)
+	await get_tree().process_frame
+	_request_spawn_on_server.rpc_id(1)
+
+@rpc("any_peer", "call_local", "reliable")
+func _request_spawn_on_server() -> void:
+	if not is_server:
+		return
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	player_spawn_requested.emit(sender_id)

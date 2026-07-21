@@ -1,0 +1,136 @@
+## steam_voice.gd
+## -----------------------------------------------------------------------
+## Autoload responsável pela captura, envio e reprodução de voz via Steam.
+## Suporta tanto um canal global (chat de voz normal) como chat de
+## proximidade (via AudioStreamPlayer3D por jogador, registados com
+## register_player_voice_node()).
+##
+## COMO USAR: adiciona como Autoload com o nome "SteamVoice".
+## -----------------------------------------------------------------------
+extends Node
+
+signal player_started_speaking(peer_id: int)
+signal player_stopped_speaking(peer_id: int)
+
+var current_sample_rate: int = 48000
+var is_recording: bool = false
+
+## peer_id -> AudioStreamGeneratorPlayback (para chat de proximidade)
+var _voice_playbacks: Dictionary = {}
+## peer_id -> PackedByteArray (buffer temporário de amostras recebidas)
+var _voice_buffers: Dictionary = {}
+
+
+func _ready() -> void:
+	current_sample_rate = 48000  # troca para Steam.getVoiceOptimalSampleRate() se preferires
+
+
+## ---------------------------------------------------------------------
+## Registar/remover o AudioStreamPlayer3D de cada jogador (proximidade)
+## ---------------------------------------------------------------------
+
+## Chama isto quando um jogador é criado na cena, passando o próprio
+## AudioStreamPlayer3D filho dele.
+func register_player_voice_node(peer_id: int, voice_player: AudioStreamPlayer3D) -> void:
+	if not voice_player.stream:
+		voice_player.stream = AudioStreamGenerator.new()
+		voice_player.stream.mix_rate = current_sample_rate
+	voice_player.play()
+	_voice_playbacks[peer_id] = voice_player.get_stream_playback()
+	_voice_buffers[peer_id] = PackedByteArray()
+
+
+func unregister_player_voice_node(peer_id: int) -> void:
+	_voice_playbacks.erase(peer_id)
+	_voice_buffers.erase(peer_id)
+
+
+## ---------------------------------------------------------------------
+## Gravar e enviar
+## ---------------------------------------------------------------------
+
+## Liga isto a um botão/tecla de "push to talk" (segurar) ou chama
+## start_recording() uma vez para voz sempre ativa.
+func start_recording() -> void:
+	if is_recording:
+		return
+	is_recording = true
+	Steam.setInGameVoiceSpeaking(SteamHelpers.steam_id, true)
+	Steam.startVoiceRecording()
+
+
+func stop_recording() -> void:
+	if not is_recording:
+		return
+	is_recording = false
+	Steam.setInGameVoiceSpeaking(SteamHelpers.steam_id, false)
+	Steam.stopVoiceRecording()
+
+
+func _process(_delta: float) -> void:
+	if is_recording:
+		_capture_and_send_voice()
+
+
+func _capture_and_send_voice() -> void:
+	var available: Dictionary = Steam.getAvailableVoice()
+	if available.get("result") != Steam.Result.RESULT_OK:
+		return
+	if available.get("buffer", 0) <= 0:
+		return
+
+	var voice_data: Dictionary = Steam.getVoice()
+	if voice_data.get("result") != Steam.Result.RESULT_OK:
+		return
+
+	var compressed: PackedByteArray = voice_data["buffer"]
+	_receive_voice_packet.rpc(compressed)
+
+
+## unreliable: se um pacote de voz se perder não vale a pena reenviar.
+@rpc("any_peer", "call_remote", "unreliable")
+func _receive_voice_packet(compressed: PackedByteArray) -> void:
+	var sender_id: int = multiplayer.get_remote_sender_id()
+	var decompressed: Dictionary = Steam.decompressVoice(compressed, current_sample_rate)
+	if decompressed.get("result") != Steam.Result.RESULT_OK:
+		return
+
+	if not _voice_buffers.has(sender_id):
+		return  # jogador ainda não registou o AudioStreamPlayer3D dele
+
+	var pcm: PackedByteArray = decompressed["uncompressed"]
+	_voice_buffers[sender_id].append_array(pcm)
+	player_started_speaking.emit(sender_id)
+
+
+## ---------------------------------------------------------------------
+## Reproduzir (empurrar amostras para o AudioStreamGeneratorPlayback certo)
+## ---------------------------------------------------------------------
+
+func _physics_process(_delta: float) -> void:
+	for peer_id in _voice_buffers.keys():
+		_push_available_frames(peer_id)
+
+
+func _push_available_frames(peer_id: int) -> void:
+	var buffer: PackedByteArray = _voice_buffers[peer_id]
+	if buffer.is_empty():
+		return
+
+	var playback: AudioStreamGeneratorPlayback = _voice_playbacks.get(peer_id)
+	if not playback:
+		return
+
+	var frames_available: int = playback.get_frames_available()
+	if frames_available <= 0:
+		return
+
+	var frames_to_push: int = mini(frames_available, buffer.size() / 2)
+	for i in range(frames_to_push):
+		var sample: int = buffer.decode_s16(i * 2)
+		var value: float = sample / 32768.0
+		playback.push_frame(Vector2(value, value))
+
+	_voice_buffers[peer_id] = buffer.slice(frames_to_push * 2)
+	if frames_to_push > 0 and buffer.size() <= frames_to_push * 2:
+		player_stopped_speaking.emit(peer_id)

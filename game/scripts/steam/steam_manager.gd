@@ -442,3 +442,73 @@ func _on_lobby_game_created(_lobby_id: int, _ip: int, _port: int):
 
 func _on_game_overlay_activated(_user: bool):
 	pass
+
+# --- Friends ---
+
+signal friends_list_updated
+
+func is_online() -> bool:
+	return initialized and Steam.loggedOn()
+
+func owns_game() -> bool:
+	return Steam.isSubscribed()
+
+func is_on_steam_deck() -> bool:
+	return Steam.isSteamRunningOnSteamDeck()
+
+func get_friends_list() -> Array:
+	var friends: Array = []
+	if not initialized:
+		return friends
+	var count: int = Steam.getFriendCount(Steam.FRIEND_FLAG_IMMEDIATE)
+	for i in range(count):
+		var friend_id: int = Steam.getFriendByIndex(i, Steam.FRIEND_FLAG_IMMEDIATE)
+		friends.append({
+			"id": friend_id,
+			"name": Steam.getFriendPersonaName(friend_id),
+		})
+	return friends
+
+func get_friend_lobbies() -> Dictionary:
+	var results: Dictionary = {}
+	if not initialized:
+		return results
+	var count: int = Steam.getFriendCount(Steam.FRIEND_FLAG_IMMEDIATE)
+	for i in range(count):
+		var friend_id: int = Steam.getFriendByIndex(i, Steam.FRIEND_FLAG_IMMEDIATE)
+		var game_info: Dictionary = Steam.getFriendGamePlayed(friend_id)
+		if game_info.is_empty():
+			continue
+		var app_id: int = game_info.get("id", 0)
+		var lobby = game_info.get("lobby", "No valid lobby")
+		if app_id != Steam.getAppID() or lobby is String:
+			continue
+		if not results.has(lobby):
+			results[lobby] = []
+		results[lobby].append(friend_id)
+	return results
+
+func is_friend_still_in_lobby(friend_id: int, target_lobby_id: int) -> bool:
+	var game_info: Dictionary = Steam.getFriendGamePlayed(friend_id)
+	if game_info.is_empty():
+		return false
+	var lobby = game_info.get("lobby", null)
+	return game_info.get("id", 0) == Steam.getAppID() and lobby is int and lobby == target_lobby_id
+
+func get_friend_name(friend_id: int) -> String:
+	return Steam.getFriendPersonaName(friend_id)
+
+# --- Overlay ---
+
+func open_friends_overlay() -> void:
+	Steam.activateGameOverlay("friends")
+
+func open_profile_overlay(target_steam_id: int) -> void:
+	Steam.activateGameOverlayToUser("steamid", target_steam_id)
+
+func send_friend_request(target_steam_id: int) -> void:
+	Steam.activateGameOverlayToUser("friendadd", target_steam_id)
+
+func open_invite_dialog() -> void:
+	if lobby_id != 0:
+		Steam.activateGameOverlayInviteDialog(lobby_id)
