@@ -9,7 +9,10 @@
 		"steer_speed": 3.0,
 		"mass": 1200.0,
 		"centre_of_gravity": [0.0, -0.1, 0.0],
-		"gravity_scale": 1.0
+		"gravity_scale": 1.0,
+		"top_speed_kmh": 200.0,
+		"drag_coefficient": 0.42,
+		"rolling_resistance": 30.0
 	},
 	"downforce": {
 		"front": 0.5,
