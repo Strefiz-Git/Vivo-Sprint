@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://assets/cars/vehicle-truck-yellow.glb" id="2"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_car"]
-size = Vector3(1.8, 0.8, 3.5)
+size = Vector3(1.5, 0.8, 2.8)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_wheel_fl"]
 size = Vector3(0.3, 0.3, 0.3)
@@ -25,17 +25,17 @@ collision_mask = 1
 mass = 1200.0
 center_of_mass_mode = 1
 center_of_mass = Vector3(0, -0.4, 0)
-gravity_scale = 5.0
+gravity_scale = 1.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape3D_car")
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 
 [node name="WheelFL" type="VehicleWheel3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, -0.3, 1.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.3, -0.86)
 use_as_steering = true
 use_as_traction = false
-wheel_radius = 0.35
+wheel_radius = 0.3
 wheel_friction_slip = 1.4
 suspension_stiffness = 120.0
 suspension_max_force = 6000.0
@@ -49,10 +49,10 @@ wheel_rest_length = 0.2
 shape = SubResource("BoxShape3D_wheel_fl")
 
 [node name="WheelFR" type="VehicleWheel3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, -0.3, 1.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.3, -0.86)
 use_as_steering = true
 use_as_traction = false
-wheel_radius = 0.35
+wheel_radius = 0.3
 wheel_friction_slip = 1.4
 suspension_stiffness = 120.0
 suspension_max_force = 6000.0
@@ -66,10 +66,10 @@ wheel_rest_length = 0.2
 shape = SubResource("BoxShape3D_wheel_fr")
 
 [node name="WheelRL" type="VehicleWheel3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, -0.3, -1.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 0.3, 0.66)
 use_as_steering = false
 use_as_traction = true
-wheel_radius = 0.35
+wheel_radius = 0.3
 wheel_friction_slip = 1.2
 suspension_stiffness = 80.0
 suspension_max_force = 6000.0
@@ -83,10 +83,10 @@ wheel_rest_length = 0.2
 shape = SubResource("BoxShape3D_wheel_rl")
 
 [node name="WheelRR" type="VehicleWheel3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, -0.3, -1.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.3, 0.66)
 use_as_steering = false
 use_as_traction = true
-wheel_radius = 0.35
+wheel_radius = 0.3
 wheel_friction_slip = 1.2
 suspension_stiffness = 80.0
 suspension_max_force = 6000.0
@@ -103,7 +103,7 @@ shape = SubResource("BoxShape3D_wheel_rr")
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 0)
 
 [node name="SpringArm3D" type="SpringArm3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 6)
 spring_length = 0.0
 
 [node name="Camera3D" type="Camera3D" parent="SpringArm3D"]
