@@ -22,6 +22,12 @@ var _top_speed_kmh: float = 200.0
 var _drag_coefficient: float = 0.42
 var _rolling_resistance: float = 30.0
 
+const FALL_RESCUE_Y: float = -5.0
+const RESPAWN_DELAY: float = 2.0
+var _respawn_timer: float = 0.0
+var _needs_respawn: bool = false
+var _last_valid_position: Transform3D = Transform3D()
+
 
 func _enter_tree() -> void:
 	if multiplayer.has_multiplayer_peer():
@@ -40,6 +46,7 @@ func _ready() -> void:
 	add_to_group("race_car")
 	_target_transform = global_transform
 	_previous_transform = global_transform
+	_last_valid_position = global_transform
 	_load_config()
 	if _is_local():
 		$SpringArm3D/Camera3D.current = true
@@ -85,6 +92,12 @@ func _apply_config() -> void:
 
 func _physics_process(delta: float) -> void:
 	if _is_local():
+		if _needs_respawn:
+			_respawn_timer -= delta
+			if _respawn_timer <= 0.0:
+				_respawn()
+			return
+		_check_fall_rescue()
 		if race_manager.race_active:
 			_process_local_driving(delta)
 		_update_hud()
@@ -106,42 +119,27 @@ func _process_local_driving(delta: float) -> void:
 		logger.info("CarController", "throttle=%.2f brake=%.2f steer=%.2f vel=%.1f pos=%s" % [
 			throttle_input, brake_input, steer_input, get_speed_kmh(), global_position])
 
-	var speed_ms: float = linear_velocity.length()
-	var speed_kmh: float = speed_ms * 3.6
-	var forward_dir: Vector3 = -global_transform.basis.z
-	var moving_forward: bool = linear_velocity.dot(forward_dir) > 0.5
-
-	var drag_force: float = _drag_coefficient * speed_ms * speed_ms
-	var rolling_force: float = _rolling_resistance * speed_ms
-	var total_resistance: float = drag_force + rolling_force
-
+	var speed_kmh: float = get_speed_kmh()
 	var speed_ratio: float = clampf(speed_kmh / _top_speed_kmh, 0.0, 1.0)
-	var power_curve: float = 1.0 - speed_ratio * speed_ratio
 
 	if throttle_input > 0.0:
-		var forward_force: float = throttle_input * _engine_force_max * power_curve
-		var net_force: float = maxf(forward_force - total_resistance, 0.0)
-		engine_force = -net_force
+		var power_curve: float = 1.0 - speed_ratio * speed_ratio
+		engine_force = -(throttle_input * _engine_force_max * power_curve)
 		brake = 0.0
-	elif brake_input > 0.0 and moving_forward:
-		var brake_scale: float = lerpf(1.0, 2.0, speed_ratio)
+	elif brake_input > 0.0:
+		var brake_scale: float = lerpf(1.0, 2.5, speed_ratio)
 		engine_force = 0.0
 		brake = brake_input * _brake_force_max * brake_scale
-	elif brake_input > 0.0:
-		engine_force = brake_input * _reverse_force_max
-		brake = 0.0
 	else:
 		engine_force = 0.0
-		var coast_brake: float = clampf(total_resistance * delta * 2.0, 0.0, _brake_force_max)
-		brake = coast_brake
+		brake = clampf(speed_ratio * 20.0, 0.0, _brake_force_max)
 
 	var steer_target: float = -steer_input * _steer_max
-	var speed_steer_factor: float = lerpf(1.0, 0.4, speed_ratio)
+	var speed_steer_factor: float = lerpf(1.0, 0.3, speed_ratio * speed_ratio)
 	steering = move_toward(steering, steer_target * speed_steer_factor, STEER_SPEED * delta)
 
 	if speed_kmh > _top_speed_kmh:
-		var cap_factor: float = _top_speed_kmh / speed_kmh
-		linear_velocity *= cap_factor
+		linear_velocity *= _top_speed_kmh / speed_kmh
 
 
 func _interpolate_remote_transform(delta: float) -> void:
@@ -179,3 +177,27 @@ func _update_hud() -> void:
 			hud.update_speed_mps(linear_velocity.length())
 		elif hud.has_method("update_speed"):
 			hud.update_speed(get_speed_kmh())
+
+
+func _check_fall_rescue() -> void:
+	if global_position.y < FALL_RESCUE_Y:
+		_needs_respawn = true
+		_respawn_timer = RESPAWN_DELAY
+		logger.warn("CarController", "Car fell off world at Y=%.1f, respawning..." % global_position.y)
+	elif linear_velocity.length() > 500.0:
+		_needs_respawn = true
+		_respawn_timer = RESPAWN_DELAY
+		logger.warn("CarController", "Velocity too high (%.0f m/s), respawning..." % linear_velocity.length())
+	else:
+		_last_valid_position = global_transform
+
+
+func _respawn() -> void:
+	global_transform = _last_valid_position
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	engine_force = 0.0
+	brake = 0.0
+	steering = 0.0
+	_needs_respawn = false
+	logger.info("CarController", "Car respawned at %s" % global_position)

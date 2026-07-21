@@ -6,6 +6,7 @@ var _checkpoints: Array[Area3D] = []
 
 
 func _ready() -> void:
+	_generate_track_collision()
 	_discover_checkpoints()
 	if _checkpoints.size() != 3:
 		logger.error("RaceTrack", "Needs exactly 3 checkpoints (has %d)" % _checkpoints.size())
@@ -16,6 +17,17 @@ func _ready() -> void:
 			area.body_entered.connect(_on_checkpoint_entered.bind(sector_index))
 		else:
 			logger.error("RaceTrack", "Checkpoint sector %d not found" % sector_index)
+
+
+func _generate_track_collision() -> void:
+	var track_pieces: Node3D = get_node_or_null("TrackPieces")
+	if not track_pieces:
+		return
+	for piece in track_pieces.get_children():
+		var meshes: Array[Node] = piece.find_children("*", "MeshInstance3D", true, false)
+		for mesh in meshes:
+			mesh.create_trimesh_collision()
+	logger.info("RaceTrack", "Generated trimesh collision for track pieces")
 
 
 func _discover_checkpoints() -> void:
