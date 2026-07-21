@@ -10,6 +10,13 @@ extends Node
 
 const STAT_PLAYTIME_SECONDS: String = "total_playtime_seconds"
 
+## Exemplos de nomes sugeridos para um jogo de corridas — cria os
+## correspondentes no Steamworks antes de usar (Stats & Achievements):
+##   "best_lap_time_<nome_da_pista>" (float, segundos)
+##   "races_won", "races_finished", "podiums" (int)
+const STAT_RACES_WON: String = "races_won"
+const STAT_RACES_FINISHED: String = "races_finished"
+
 var _session_start_time: float = 0.0
 var _pending_store: bool = false
 
@@ -99,7 +106,19 @@ func sync_stat_int(stat_name: String, local_value: int) -> int:
 	return steam_value
 
 
-## Chama isto em momentos pouco frequentes: fim de ronda, mudança de mapa,
+## Como sync_stat_int(), mas para stats onde o MENOR valor é o melhor
+## (ex: melhor tempo de volta em segundos). Só grava (e devolve) o valor
+## local se for menor que 0 no Steam (ainda não definido) ou menor que
+## o valor já guardado.
+func sync_best_time_float(stat_name: String, local_time_seconds: float) -> float:
+	var steam_value: float = get_stat_float(stat_name)
+	if steam_value <= 0.0 or local_time_seconds < steam_value:
+		set_stat_float(stat_name, local_time_seconds)
+		return local_time_seconds
+	return steam_value
+
+
+## Chama isto em momentos pouco frequentes: fim de corrida, mudança de pista,
 ## saída do servidor. Não chames a cada pequena alteração de stat.
 func store_stats() -> void:
 	if Steam.storeStats():

@@ -1,21 +1,21 @@
 ## steam_networking.gd
 ## -----------------------------------------------------------------------
 ## Autoload responsável pela ligação P2P via SteamMultiplayerPeer:
-## criar host/cliente, spawn de jogadores, migração de host, e troca
-## de cena sincronizada para todos os jogadores.
+## criar host/cliente, spawn de carros, migração de host, e troca
+## de pista sincronizada para todos os jogadores.
 ##
 ## Depende de "SteamHelpers" e "SteamLobbies" já estarem carregados.
 ## COMO USAR: adiciona como Autoload com o nome "SteamNetworking".
 ## -----------------------------------------------------------------------
 extends Node
 
-signal player_spawn_requested(peer_id: int)
-signal player_despawn_requested(peer_id: int)
+signal car_spawn_requested(peer_id: int)
+signal car_despawn_requested(peer_id: int)
 signal host_migration_started
 signal host_migration_finished(am_i_the_new_host: bool)
 
-## Muda para o caminho da cena do teu jogador.
-@export var player_scene_path: String = "res://player/player.tscn"
+## Muda para o caminho da cena do teu carro.
+@export var car_scene_path: String = "res://cars/car.tscn"
 
 
 func _ready() -> void:
@@ -54,28 +54,28 @@ func stop_networking() -> void:
 
 
 ## ---------------------------------------------------------------------
-## Spawn / despawn de jogadores
+## Spawn / despawn de carros
 ## ---------------------------------------------------------------------
 
 func _on_peer_connected(peer_id: int) -> void:
 	if not multiplayer.is_server():
 		return
-	player_spawn_requested.emit(peer_id)
+	car_spawn_requested.emit(peer_id)
 
 
 func _on_peer_disconnected(peer_id: int) -> void:
-	player_despawn_requested.emit(peer_id)
+	car_despawn_requested.emit(peer_id)
 
 
-## Chama isto no cliente assim que a cena de jogo estiver pronta, para
-## pedires ao servidor que faça o teu spawn (útil quando entras a meio
-## de uma partida já em curso).
+## Chama isto no cliente assim que a pista estiver pronta, para pedires
+## ao servidor que faça o teu spawn (útil quando entras a meio de uma
+## corrida já em curso, ex: como espetador que decide juntar-se).
 @rpc("any_peer", "call_local", "reliable")
 func request_my_spawn() -> void:
 	if not multiplayer.is_server():
 		return
 	var sender_id: int = multiplayer.get_remote_sender_id()
-	player_spawn_requested.emit(sender_id)
+	car_spawn_requested.emit(sender_id)
 
 
 ## ---------------------------------------------------------------------
@@ -100,36 +100,42 @@ func _on_server_disconnected() -> void:
 
 
 ## ---------------------------------------------------------------------
-## Troca de cena sincronizada (ex: escolher e carregar o mapa)
+## Troca de pista sincronizada (escolher e carregar a pista de corrida)
 ## ---------------------------------------------------------------------
 
-## Chama do lado do host para anunciar o mapa escolhido na sala de espera
+## Chama do lado do host para anunciar a pista escolhida na sala de espera
 ## (só atualiza a UI de pré-visualização, não troca de cena ainda).
-func host_announce_map(map_path: String) -> void:
+func host_announce_track(track_path: String) -> void:
 	if not multiplayer.is_server():
 		return
-	Steam.setLobbyData(SteamHelpers.lobby_id, "selected_map", map_path)
-	_notify_map_selected.rpc(map_path)
+	Steam.setLobbyData(SteamHelpers.lobby_id, "selected_track", track_path)
+	_notify_track_selected.rpc(track_path)
 
 
 @rpc("authority", "call_local", "reliable")
-func _notify_map_selected(map_path: String) -> void:
-	get_tree().call_group("map_preview_listeners", "on_map_selected", map_path)
+func _notify_track_selected(track_path: String) -> void:
+	get_tree().call_group("track_preview_listeners", "on_track_selected", track_path)
 
 
 ## Chama do lado do host para mandar todos (incluindo ele próprio) carregar
-## a mesma cena ao mesmo tempo.
-func host_start_game() -> void:
+## a mesma pista ao mesmo tempo. Depois de carregar, cada cliente pede o
+## seu spawn e o host trata de arrancar a corrida (ver race_track.gd /
+## RaceManager.start_race() — normalmente chamado após um pequeno delay
+## para dar tempo a todos os carros aparecerem na grelha).
+func host_start_race(track_path: String = "") -> void:
 	if not multiplayer.is_server():
 		return
-	var map_path: String = Steam.getLobbyData(SteamHelpers.lobby_id, "selected_map")
-	if map_path.is_empty():
-		map_path = player_scene_path.get_base_dir()  # fallback, ajusta conforme o teu projeto
-	_change_scene_for_all.rpc(map_path)
+	var path: String = track_path
+	if path.is_empty():
+		path = Steam.getLobbyData(SteamHelpers.lobby_id, "selected_track")
+	if path.is_empty():
+		printerr("[Networking] Nenhuma pista selecionada.")
+		return
+	_change_track_for_all.rpc(path)
 
 
 @rpc("authority", "call_local", "reliable")
-func _change_scene_for_all(map_path: String) -> void:
-	get_tree().change_scene_to_file(map_path)
+func _change_track_for_all(track_path: String) -> void:
+	get_tree().change_scene_to_file(track_path)
 	await get_tree().process_frame
 	request_my_spawn.rpc_id(1)

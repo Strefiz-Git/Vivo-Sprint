@@ -1,9 +1,12 @@
 ## steam_voice.gd
 ## -----------------------------------------------------------------------
 ## Autoload responsável pela captura, envio e reprodução de voz via Steam.
-## Suporta tanto um canal global (chat de voz normal) como chat de
-## proximidade (via AudioStreamPlayer3D por jogador, registados com
-## register_player_voice_node()).
+## Canal global simples (todos ouvem todos) — num jogo de corridas não faz
+## muito sentido chat de proximidade espacial (3D), por isso este ficheiro
+## usa um AudioStreamPlayer normal por jogador, não um AudioStreamPlayer3D.
+##
+## Se mais tarde quiseres separar por equipas/salas, dá para filtrar em
+## _receive_voice_packet() antes de tocar o áudio.
 ##
 ## COMO USAR: adiciona como Autoload com o nome "SteamVoice".
 ## -----------------------------------------------------------------------
@@ -15,7 +18,7 @@ signal player_stopped_speaking(peer_id: int)
 var current_sample_rate: int = 48000
 var is_recording: bool = false
 
-## peer_id -> AudioStreamGeneratorPlayback (para chat de proximidade)
+## peer_id -> AudioStreamGeneratorPlayback
 var _voice_playbacks: Dictionary = {}
 ## peer_id -> PackedByteArray (buffer temporário de amostras recebidas)
 var _voice_buffers: Dictionary = {}
@@ -26,12 +29,12 @@ func _ready() -> void:
 
 
 ## ---------------------------------------------------------------------
-## Registar/remover o AudioStreamPlayer3D de cada jogador (proximidade)
+## Registar/remover o AudioStreamPlayer de cada jogador
 ## ---------------------------------------------------------------------
 
-## Chama isto quando um jogador é criado na cena, passando o próprio
-## AudioStreamPlayer3D filho dele.
-func register_player_voice_node(peer_id: int, voice_player: AudioStreamPlayer3D) -> void:
+## Chama isto quando um jogador entra na lobby/pista, passando um
+## AudioStreamPlayer (2D, não precisa ser posicional).
+func register_player_voice_node(peer_id: int, voice_player: AudioStreamPlayer) -> void:
 	if not voice_player.stream:
 		voice_player.stream = AudioStreamGenerator.new()
 		voice_player.stream.mix_rate = current_sample_rate
@@ -96,7 +99,7 @@ func _receive_voice_packet(compressed: PackedByteArray) -> void:
 		return
 
 	if not _voice_buffers.has(sender_id):
-		return  # jogador ainda não registou o AudioStreamPlayer3D dele
+		return  # jogador ainda não registou o AudioStreamPlayer dele
 
 	var pcm: PackedByteArray = decompressed["uncompressed"]
 	_voice_buffers[sender_id].append_array(pcm)
